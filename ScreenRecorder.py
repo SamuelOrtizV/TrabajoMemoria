@@ -26,6 +26,25 @@ def show_screen_capture(img):
         return True
     
 
+def preprocess_image(img, width, height):
+    """
+    Given an image resize it and convert it to a numpy array
+
+    :param PIL.image image:
+    :returns:
+        numpy ndarray - image as a numpy array of dimensions [width, height, 1]
+    """
+    bnw_frame = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    processed_image = cv2.resize(bnw_frame, (width, height))
+
+    #return processed_image
+
+    return np.asarray(
+        processed_image,
+        dtype=np.uint8,
+    )
+    
+
 
 
 # Define la región de captura (x, y, width, height)

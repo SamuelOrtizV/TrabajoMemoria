@@ -3,16 +3,18 @@ import numpy as np
 import os
 import time
 import cv2
-from ScreenRecorder import capture_screen, show_screen_capture
+from ScreenRecorder import capture_screen, show_screen_capture, preprocess_image
 from getkeys import key_check, keys_to_id
 
 # Define the size of the screen capture
 """ WIDTH = 480
 HEIGHT = 270 """
+
 WIDTH = 192
 HEIGHT = 144 #192x144 es apenas distinguible por el ojo humano, un buen punto de partida
 
 file_name = "training_data.npz"
+data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\data"
 
 if os.path.isfile(file_name):
     print(f"Archivo {file_name} encontrado, cargando datos existentes...")
@@ -21,23 +23,11 @@ else:
     print(f"Archivo {file_name} no encontrado, creando uno nuevo...")
     training_data = []
 
-def preprocess_image(img, width, height):
-    """
-    Given an image resize it and convert it to a numpy array
+def save_images_with_labels(images, labels, save_path, file_name):
+    data = {'images': images, 'labels': labels}
+    np.savez(os.path.join(save_path, file_name), **data)
 
-    :param PIL.image image:
-    :returns:
-        numpy ndarray - image as a numpy array of dimensions [width, height, 1]
-    """
-    bnw_frame = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    processed_image = cv2.resize(bnw_frame, (width, height))
 
-    return processed_image
-
-"""     return np.asarray(
-        processed_image,
-        dtype=np.uint8,
-    ) """
 
 def main():
     # Configuración de argumentos de línea de comandos
@@ -64,23 +54,32 @@ def main():
         print(i + 1)
         time.sleep(1)
 
+    frame_count = 0
+    images = []
+    labels = []
+
     # Bucle principal
     while True:
         
         img = capture_screen(region)
+        preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
 
         keys = key_check()
         output = keys_to_id(keys)
 
-        print(f"Keys: {keys} Output: {output}")
+        images.append(preprocessed_img)
+        labels.append(output)
 
-        preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
 
-        training_data.append([preprocessed_img, [output]])
+        print(f"Keys: {keys} Output: {output}")        
 
-        if len(training_data) % 10 == 0:
+        training_data.append([preprocessed_img, output])
+
+        if len(images) % 10 == 0:
             print(f"Guardando datos de entrenamiento. Imagenes capturadas: {len(training_data)} ")
-            np.savez(file_name, training_data, allow_pickle=True)
+            save_images_with_labels(np.array(images), np.array(labels), data_path, file_name)
+            images.clear()
+            labels.clear()
 
         if args.show_screen_capture:
             if show_screen_capture(img):            
