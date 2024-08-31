@@ -50,7 +50,7 @@ def preprocess_image(img, width, height):
 # Define la región de captura (x, y, width, height)
 region = {'left': 0, 'top': 40, 'width': 800, 'height': 600}
 
-""" # Captura la pantalla
+""" # Prueba Captura la pantalla
 while True:
     img = capture_screen(region)
     if show_screen_capture(img):

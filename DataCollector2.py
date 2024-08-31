@@ -10,8 +10,11 @@ from getkeys import key_check, keys_to_id
 """ WIDTH = 480
 HEIGHT = 270 """
 
-WIDTH = 192
-HEIGHT = 144 #192x144 es apenas distinguible por el ojo humano, un buen punto de partida
+""" WIDTH = 192
+HEIGHT = 144 """ #192x144 es apenas distinguible por el ojo humano, un buen punto de partida
+
+WIDTH = 800
+HEIGHT = 600
 
 file_name = "training_data.npz"
 data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\data"
@@ -23,10 +26,43 @@ else:
     print(f"Archivo {file_name} no encontrado, creando uno nuevo...")
     training_data = []
 
-def save_images_with_labels(images, labels, save_path, file_name):
-    data = {'images': images, 'labels': labels}
-    np.savez(os.path.join(save_path, file_name), **data)
+def save_images_with_labels(image, label, save_path, id):
+    """
+    Guarda cada imagen individualmente en formato .jpg con un nombre que incluye
+    un número secuencial y la etiqueta correspondiente.
 
+    :param images: Lista o array de imágenes.
+    :param labels: Lista de etiquetas correspondientes a las imágenes.
+    :param save_path: Ruta donde se guardarán las imágenes.
+    :param start_number: Número a partir del cual iniciar el contador para el nombre de los archivos.
+    """
+    file_name = f"{id}_{label}.jpeg"
+
+    file_path = os.path.join(save_path, file_name)
+
+    cv2.imwrite(file_path, image)
+
+def get_last_image_number(save_path):
+    """
+    Obtiene el número de la última imagen guardada en una carpeta.
+
+    :param save_path: Ruta donde se guardarán las imágenes.
+    :return: Número de la última imagen guardada.
+    """
+    files = os.listdir(save_path)
+    files = [f for f in files if f.endswith(".jpeg")]
+
+    """ if len(files) == 0:
+        return 0
+
+    files.sort()
+
+    last_file = files[-1]
+    number = int(last_file.split("_")[0])
+
+    return number """
+
+    return len(files)
 
 
 def main():
@@ -37,7 +73,6 @@ def main():
     parser.add_argument('--full_screen', type=bool, default=False, required=False, help='Captura toda la pantalla o una ventana') 
     parser.add_argument('--show_screen_capture', type=bool, default=False, required=False, help='Muestra la grabación de la pantalla') 
     # make this false by default
-
 
     args = parser.parse_args()
 
@@ -54,11 +89,13 @@ def main():
         print(i + 1)
         time.sleep(1)
 
-    frame_count = 0
-    images = []
-    labels = []
+    img_id = get_last_image_number(data_path) + 1
+
+    print("Comenzando captura de datos a partir de la imagen", img_id)
 
     # Bucle principal
+
+    cont = 0
     while True:
         
         img = capture_screen(region)
@@ -67,23 +104,21 @@ def main():
         keys = key_check()
         output = keys_to_id(keys)
 
-        images.append(preprocessed_img)
-        labels.append(output)
+        print(f"Keys: {keys} Output: {output}")
 
-
-        print(f"Keys: {keys} Output: {output}")        
-
-        training_data.append([preprocessed_img, output])
-
-        if len(images) % 10 == 0:
-            print(f"Guardando datos de entrenamiento. Imagenes capturadas: {len(training_data)} ")
-            save_images_with_labels(np.array(images), np.array(labels), data_path, file_name)
-            images.clear()
-            labels.clear()
+        save_images_with_labels(preprocessed_img, output, data_path, img_id)
+        img_id += 1
 
         if args.show_screen_capture:
             if show_screen_capture(img):            
                 break
+
+        cont += 1
+
+        if cont >=50:
+            break
+
+        
 
 if __name__ == "__main__":
     main()
