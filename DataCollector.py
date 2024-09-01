@@ -3,88 +3,132 @@ import numpy as np
 import os
 import time
 import cv2
-from ScreenRecorder import capture_screen, show_screen_capture
+from ScreenRecorder import capture_screen, show_screen_capture, preprocess_image
 from getkeys import key_check, keys_to_id
 
 # Define the size of the screen capture
 """ WIDTH = 480
 HEIGHT = 270 """
-WIDTH = 192
-HEIGHT = 144 #192x144 es apenas distinguible por el ojo humano, un buen punto de partida
 
-file_name = "training_data.npz"
+WIDTH = 256
+HEIGHT = 144 #256x144 es apenas distinguible por el ojo humano, un buen punto de partida
 
-if os.path.isfile(file_name):
-    print(f"Archivo {file_name} encontrado, cargando datos existentes...")
-    training_data = list(np.load(file_name, allow_pickle=True)) # allow_pickle=True means that the data is loaded as a list
-else:
-    print(f"Archivo {file_name} no encontrado, creando uno nuevo...")
-    training_data = []
+""" WIDTH = 1600
+HEIGHT = 900 """
 
-def preprocess_image(img, width, height):
+data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\data"
+
+def save_images_with_labels(image, label, save_path, id):
     """
-    Given an image resize it and convert it to a numpy array
+    Guarda cada imagen individualmente en formato .jpg con un nombre que incluye
+    un número secuencial y la etiqueta correspondiente.
 
-    :param PIL.image image:
-    :returns:
-        numpy ndarray - image as a numpy array of dimensions [width, height, 1]
+    :param images: Lista o array de imágenes.
+    :param labels: Lista de etiquetas correspondientes a las imágenes.
+    :param save_path: Ruta donde se guardarán las imágenes.
+    :param start_number: Número a partir del cual iniciar el contador para el nombre de los archivos.
     """
-    bnw_frame = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    processed_image = cv2.resize(bnw_frame, (width, height))
+    file_name = f"{id}_{label}.jpeg"
 
-    return processed_image
+    file_path = os.path.join(save_path, file_name)
 
-"""     return np.asarray(
-        processed_image,
-        dtype=np.uint8,
-    ) """
+    cv2.imwrite(file_path, image)
 
-def main():
-    # Configuración de argumentos de línea de comandos
-    parser = argparse.ArgumentParser(description="Captura una región de la pantalla y la muestra en tiempo real.")
-    parser.add_argument('--width', type=int, required=True, help='Ancho de la región a capturar')
-    parser.add_argument('--height', type=int, required=True, help='Altura de la región a capturar')
-    parser.add_argument('--full_screen', type=bool, default=False, required=False, help='Captura toda la pantalla o una ventana') 
-    parser.add_argument('--show_screen_capture', type=bool, default=False, required=False, help='Muestra la grabación de la pantalla') 
-    # make this false by default
+def get_last_image_number(save_path):
+    """
+    Obtiene el número de la última imagen guardada en una carpeta.
 
+    :param save_path: Ruta donde se guardarán las imágenes.
+    :return: Número de la última imagen guardada.
+    """
+    files = os.listdir(save_path)
+    files = [int(f.split("_")[0]) for f in files if f.endswith(".jpeg")]
 
-    args = parser.parse_args()
+    if len(files) == 0:
+        return -1
+
+    files.sort()
+
+    return max(files)
+
+def data_collector(
+        width: int = 1600,
+        height: int = 900,
+        full_screen: bool = False,
+        show_screen_capture: bool = False,
+        max_fps: int = 5
+) -> None:
+    """
+    Captura la pantalla y guarda las imágenes en una carpeta con la etiqueta correspondiente a las teclas presionadas.
+    """
 
     # Define la región de captura (x, y, width, height)
-    if args.full_screen:
-        region = {'left': 0, 'top': 0, 'width': args.width, 'height': args.height}
+    if full_screen:
+        region = {'left': 0, 'top': 0, 'width': width, 'height': height}
     else:
-        region = {'left': 0, 'top': 40, 'width': args.width, 'height': args.height}
+        region = {'left': 0, 'top': 40, 'width': width, 'height': height}
 
-    print(f"Capturando una región de {args.width}x{args.height} píxeles...")
+    print(f"Capturando una región de {width}x{height} píxeles...")
 
     # print countdown 5 seconds
     for i in list(range(5))[::-1]:
         print(i + 1)
         time.sleep(1)
 
+    img_id = get_last_image_number(data_path) + 1
+
+    print("Comenzando captura de datos a partir de la imagen", img_id)
+
     # Bucle principal
-    while True:
-        
-        img = capture_screen(region)
 
-        keys = key_check()
-        output = keys_to_id(keys)
+    run_app = True
 
-        print(f"Keys: {keys} Output: {output}")
+    while run_app:
+        try:
+            start_time = time.time()            
 
-        preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
+            img = capture_screen(region)
+            preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
 
-        training_data.append([preprocessed_img, [output]])
+            keys = key_check()
+            output = keys_to_id(keys)
 
-        if len(training_data) % 10 == 0:
-            print(f"Guardando datos de entrenamiento. Imagenes capturadas: {len(training_data)} ")
-            np.savez(file_name, training_data, allow_pickle=True)
+            #print(f"Keys: {keys} Output: {output}")
 
-        if args.show_screen_capture:
-            if show_screen_capture(img):            
-                break
+            save_images_with_labels(preprocessed_img, output, data_path, img_id)
+            img_id += 1
+
+            wait_time = 1.0 / max_fps - (time.time() - start_time)
+            if wait_time > 0:
+                time.sleep(wait_time)
+
+            """ if show_screen_capture:
+                if show_screen_capture(img): #Esta parte requiere uso de hilos, NO USAR de momento           
+                    break """
+            
+            print(f"Guardando {max_fps} imágenes por segundo. Datos guardados: {img_id-1}", end="\r")
+
+        except KeyboardInterrupt:
+            run_app = False
+            print("\nCaptura de datos interrumpida por el usuario.\n"
+                  "Se han guardado un total de", img_id-1, "imágenes.")    
 
 if __name__ == "__main__":
-    main()
+
+    # Configuración de argumentos de línea de comandos
+    parser = argparse.ArgumentParser(description="Genera datos de entrenamiento con capturas de pantalla y etiquetas de teclas presionadas.")
+    parser.add_argument('--width', type=int, required=True, help='Ancho de la región a capturar')
+    parser.add_argument('--height', type=int, required=True, help='Altura de la región a capturar')
+    parser.add_argument('--max_fps', type=int, default=5, required=False, help='Máximo número de fotogramas por segundo')
+    parser.add_argument('--full_screen', type=bool, default=False, required=False, help='Captura toda la pantalla o una ventana') 
+    parser.add_argument('--show_screen_capture', type=bool, default=False, required=False, help='Muestra la grabación de la pantalla') 
+
+    args = parser.parse_args()
+
+    data_collector(
+        width=args.width,
+        height=args.height,
+        full_screen=args.full_screen,
+        show_screen_capture=args.show_screen_capture,
+        max_fps=args.max_fps
+    )
