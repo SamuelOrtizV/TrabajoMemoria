@@ -4,7 +4,18 @@
 import win32api as wapi
 
 keyList = []  # ["\b"]
-for char in "WASD":  # "ABCDEFGHIJKLMNOPQRSTUVWXYZ 123456789,.'APS$/\\": # J L
+
+"""
+W: Forward
+A: Left
+S: Backward
+D: Right
+Q: Quit
+P: Pause/Resume
+E: Elimitane last images
+"""
+
+for char in "WASDQPE":  # "ABCDEFGHIJKLMNOPQRSTUVWXYZ 123456789,.'APS$/\\": # J L
     keyList.append(char)
 
 
