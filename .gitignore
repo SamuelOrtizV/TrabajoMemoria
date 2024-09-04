@@ -1,0 +1,17 @@
+# Ignorar la carpeta de entrenamiento
+train_dataset/
+
+# Ignorar la carpeta de prueba
+test_dataset/
+
+# Ignorar la carpeta de datos crudos
+raw_data/
+
+# Ignorar la carpeta de logs
+runs/
+
+# Ignorar la carpeta de modelos
+models/
+
+# Ignorar la carpeta de datos balanceados
+balanced_data/

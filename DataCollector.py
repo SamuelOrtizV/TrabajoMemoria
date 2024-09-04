@@ -10,13 +10,13 @@ from getkeys import key_check, keys_to_id
 """ WIDTH = 480
 HEIGHT = 270 """
 
-WIDTH = 256
-HEIGHT = 144 #256x144 es apenas distinguible por el ojo humano, un buen punto de partida
+WIDTH = 128
+HEIGHT = 72 #128 x 72 es apenas distinguible por el ojo humano, un buen punto de partida
 
 """ WIDTH = 1600
 HEIGHT = 900 """
 
-data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\data"
+data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data"
 
 def save_images_with_labels(image, label, save_path, id):
     """
