@@ -4,17 +4,12 @@ import os
 import time
 import cv2
 from ScreenRecorder import capture_screen, show_screen_capture, preprocess_image
-from getkeys import key_check, keys_to_id
+from getkeys import key_check, keys_to_id 
+# IDEA, SEPARAR LAS ENTRADAS EN DOS GRADOS DE LIBERTAD. GUARDAR LOS PRIMEDIOS DE LAS LECTURAS DE CADA GRADO DE LIBERTAD CAPTURADO EN UNA IMAGEN
 
 # Define the size of the screen capture
-""" WIDTH = 480
-HEIGHT = 270 """
-
 WIDTH = 128
 HEIGHT = 72 #128 x 72 es apenas distinguible por el ojo humano, un buen punto de partida
-
-""" WIDTH = 1600
-HEIGHT = 900 """
 
 data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data"
 
@@ -105,8 +100,8 @@ def data_collector(
 
     print("Comenzando captura de datos a partir de la imagen", img_id)
 
-    # Bucle principal
 
+    # Bucle principal
     run_app = True
 
     while run_app:

@@ -1,0 +1,9 @@
+DataCollector
+
+Para ejecutar el colector de datos abrir start_data_collector.bat
+
+Antes de ejecutar DataCollector, editar los argumentos para configurar la resolución, si es pantalla completa, cantidad de FPS, 
+ruta para guardado de datos y si mostrar captura de datos en otra pestaña (consume recursos importantes).
+
+
+

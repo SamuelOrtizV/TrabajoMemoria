@@ -7,16 +7,16 @@ from PIL import Image
 
 # Definición del dataset personalizado
 class RacingDataset(Dataset):
-    def __init__(self, data_dir, seq_len, transform=None):
+    def __init__(self, data_dir, transform=None):
         self.data_dir = data_dir
-        self.seq_len = seq_len
+        #self.seq_len = seq_len
         self.transform = transform
         self.image_paths = sorted([os.path.join(data_dir, f) for f in os.listdir(data_dir)])
         
     def __len__(self):
-        return len(self.image_paths) - self.seq_len + 1
+        return len(self.image_paths) #- self.seq_len + 1
     
-    def __getitem__(self, idx):
+    """ def __getitem__(self, idx):
         images = []
         labels = []
         for i in range(self.seq_len):
@@ -30,7 +30,16 @@ class RacingDataset(Dataset):
             label = int(os.path.basename(img_path).split('_')[1].split(".")[0])  # Asume que la etiqueta está en el nombre despues del id y antes de la extensión
             labels.append(label)
         
-        return torch.stack(images), labels[-1]  # Devuelve las imágenes y la última etiqueta
+        return torch.stack(images), labels[-1]  # Devuelve las imágenes y la última etiqueta """
+    def __getitem__(self, idx):
+        image_path = self.image_paths[idx]
+        label = int(os.path.basename(image_path).split('_')[1].split(".")[0])  # Asume que la etiqueta está en el nombre despues del id y antes de la extensión
+
+        image = Image.open(image_path).convert('L')  # Convertir a escala de grises si es necesario
+        if self.transform:
+            image = self.transform(image)
+
+        return image, label
 
 # Definición del modelo
 class SimpleRNN(nn.Module):
