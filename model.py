@@ -12,7 +12,7 @@ class RacingDataset(Dataset):
         #self.image_paths = sorted([os.path.join(data_dir, f) for f in os.listdir(data_dir)])
         self.data = self.load_data()  # Cargar tus datos aquí
         self.labels = self.load_labels()  # Cargar tus etiquetas aquí
-        self.data_dimention = self.get_data_dimention()
+        self.data_dimension = self.get_data_dimension()
 
     # CREO QUE AL CARGAR LOS STRINGS VA A DESORDENAR LOS DATOS, PROBAR IMPRIMIENDO LOS NOMBRES DE LOS ARCHIVOS
 
@@ -30,8 +30,9 @@ class RacingDataset(Dataset):
             labels.append(label)
         return labels
     
-    def get_data_dimention(self):
-        return self.data[0].size
+    def get_data_dimension(self):
+        image = self.data[0]
+        return image.size
 
     def __len__(self):
         # El tamaño del dataset es el número de imágenes menos el tamaño de la secuencia más 1
@@ -39,18 +40,31 @@ class RacingDataset(Dataset):
 
     def __getitem__(self, idx):
         # Crear una secuencia de imágenes
+        
         if idx >= self.seq_len - 1: 
             images_seq = self.data[idx - self.seq_len : idx]     
         else:
-            images_seq = [Image.new('RGB', self.data_dimension, (0, 0, 0))] * (self.seq_len - idx - 1) # Se rellena con imágenes negras 
-            images_seq.extend(self.data[:idx])
+            print("ALOOO")
+            images_seq = []
+            # Comenzar desde idx - self.seq_len + 1 y terminar en idx
+            for i in range(self.seq_len):
+                current_idx = idx - self.seq_len + 1 + i
+                if self.data[current_idx] is not None:
+                    images_seq.append(self.data[current_idx])
+                else:
+                    images_seq.append(Image.new('RGB', self.data_dimension, (0, 0, 0)))            
 
         label = self.labels[idx]
 
         if self.transform:
             images_seq = [self.transform(image) for image in images_seq]
 
-        images_seq = torch.stack(images_seq)  # Convertir la lista de imágenes en un tensor
+        # Convertir la lista de imágenes a un tensor de tamaño (seq_len, Channels, Height, Width)
+
+        if len(images_seq) > 0:
+            images_seq = torch.stack(images_seq)
+        else:
+            raise RuntimeError("La lista de imágenes está vacía, no se puede apilar.")
 
         return images_seq, label
     

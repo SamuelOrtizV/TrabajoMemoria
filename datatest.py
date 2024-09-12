@@ -24,8 +24,6 @@ dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
 IMAGE_INDEX = 5
 
-
-
 for i, (images, label) in enumerate(dataloader):
     if i == IMAGE_INDEX:
         print(f"Imagen {i}:")
