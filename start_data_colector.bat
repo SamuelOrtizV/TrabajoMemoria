@@ -1,6 +1,6 @@
 @echo off
 :: Guarda el script y los argumentos en una variable
-set script_path=C:\ruta\al\directorio\del\script\DataCollector.py
+set script_path=C:\Users\PC\Documents\GitHub\TrabajoMemoria\DataCollector.py
 set args=--width 1920 --height 1080 --full_screen True
 
 :: Ejecuta el script como administrador

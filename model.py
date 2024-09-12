@@ -4,75 +4,105 @@ from torch.utils.data import Dataset
 import os
 from PIL import Image
 
-
-# Definición del dataset personalizado
 class RacingDataset(Dataset):
-    def __init__(self, data_dir, transform=None):
+    def __init__(self, data_dir, seq_len, transform=None):
         self.data_dir = data_dir
-        #self.seq_len = seq_len
+        self.seq_len = seq_len
         self.transform = transform
-        self.image_paths = sorted([os.path.join(data_dir, f) for f in os.listdir(data_dir)])
-        
-    def __len__(self):
-        return len(self.image_paths) #- self.seq_len + 1
-    
-    """ def __getitem__(self, idx):
-        images = []
+        #self.image_paths = sorted([os.path.join(data_dir, f) for f in os.listdir(data_dir)])
+        self.data = self.load_data()  # Cargar tus datos aquí
+        self.labels = self.load_labels()  # Cargar tus etiquetas aquí
+        self.data_dimention = self.get_data_dimention()
+
+    # CREO QUE AL CARGAR LOS STRINGS VA A DESORDENAR LOS DATOS, PROBAR IMPRIMIENDO LOS NOMBRES DE LOS ARCHIVOS
+
+    def load_data(self):
+        data = []
+        for file in os.listdir(self.data_dir):
+            image = Image.open(os.path.join(self.data_dir, file)).convert('RGB')
+            data.append(image)
+        return data        
+
+    def load_labels(self):
         labels = []
-        for i in range(self.seq_len):
-            img_path = self.image_paths[idx + i]
-            image = Image.open(img_path).convert('L')
-            if self.transform:
-                image = self.transform(image)
-            images.append(image)
-            
-            # Extraer la etiqueta del nombre de la imagen
-            label = int(os.path.basename(img_path).split('_')[1].split(".")[0])  # Asume que la etiqueta está en el nombre despues del id y antes de la extensión
+        for file in os.listdir(self.data_dir):
+            label = int(file.split('_')[1].split(".")[0])
             labels.append(label)
-        
-        return torch.stack(images), labels[-1]  # Devuelve las imágenes y la última etiqueta """
+        return labels
+    
+    def get_data_dimention(self):
+        return self.data[0].size
+
+    def __len__(self):
+        # El tamaño del dataset es el número de imágenes menos el tamaño de la secuencia más 1
+        return len(self.data) - self.seq_len + 1
+
     def __getitem__(self, idx):
-        image_path = self.image_paths[idx]
-        label = int(os.path.basename(image_path).split('_')[1].split(".")[0])  # Asume que la etiqueta está en el nombre despues del id y antes de la extensión
+        # Crear una secuencia de imágenes
+        if idx >= self.seq_len - 1: 
+            images_seq = self.data[idx - self.seq_len : idx]     
+        else:
+            images_seq = [Image.new('RGB', self.data_dimension, (0, 0, 0))] * (self.seq_len - idx - 1) # Se rellena con imágenes negras 
+            images_seq.extend(self.data[:idx])
 
-        image = Image.open(image_path).convert('L')  # Convertir a escala de grises si es necesario
+        label = self.labels[idx]
+
         if self.transform:
-            image = self.transform(image)
+            images_seq = [self.transform(image) for image in images_seq]
 
-        return image, label
+        images_seq = torch.stack(images_seq)  # Convertir la lista de imágenes en un tensor
 
-# Definición del modelo
+        return images_seq, label
+    
+# Definición del modelo    
 class SimpleRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    """
+    Modelo de red neuronal recurrente simple que utiliza una CNN preentrenada para extraer características de las imágenes
+    y una capa RNN para procesar la secuencia de características.
+
+    Args:
+        pretrained_cnn (torch.nn.Module): Modelo de CNN preentrenado.
+        hidden_size (int): Tamaño del estado oculto de la RNN.
+        output_size (int): Tamaño de la salida del modelo.
+        input_size (tuple, optional): Tamaño de la entrada de las imágenes (canales, altura, ancho). Máximo tamaño es 384x384.
+        num_layers (int, optional): Número de capas de la RNN. 
+        dropout (float, optional): Probabilidad de dropout.
+        bias (bool, optional): Si se incluye sesgo en las capas lineales.
+    """
+    def __init__(self, pretrained_cnn, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True):
         super(SimpleRNN, self).__init__()
         
-        # Capa de convolución para extraer características de las imágenes
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-        )
+        # Usar el modelo preentrenado
+        self.cnn = pretrained_cnn
+        self.cnn.classifier = nn.Identity()  # Quitar la última capa de clasificación
+        #self.cnn.eval()  # Poner el modelo en modo evaluación
         
-        conv_output_size = self._get_conv_output_size(input_size)
-        self.rnn = nn.RNN(conv_output_size, hidden_size, batch_first=True)
+        # Desactivar el gradiente para las capas convolucionales preentrenadas, de esta forma no se actualizarán los pesos durante el entrenamiento
+        for param in self.cnn.parameters():
+            param.requires_grad = False
+        
+        # Obtener el tamaño de la salida de la CNN
+        self.input_size = input_size
+        conv_output_size = self._get_conv_output_size()
+        
+        # Definir la capa RNN y la capa totalmente conectada
+        self.rnn = nn.RNN(conv_output_size, hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout, bias=bias)
         self.fc = nn.Linear(hidden_size, output_size)
     
-    def _get_conv_output_size(self, input_size):
-        dummy_input = torch.zeros(1, 1, *input_size)
-        output = self.conv(dummy_input)
+    def _get_conv_output_size(self):
+        # Crear una entrada dummy para pasarla a través de la CNN
+        dummy_input = torch.zeros(1, *self.input_size)  # Ajustar según la entrada esperada por la CNN segun los parametros ()
+        output = self.cnn(dummy_input)
         return int(torch.prod(torch.tensor(output.shape[1:])))
     
     def forward(self, x):
         batch_size, seq_len, _, _, _ = x.size()
         conv_out = []
         for t in range(seq_len):
-            conv_out.append(self.conv(x[:, t, :, :, :]).view(batch_size, -1))
+            # Pasar cada imagen a través de la CNN preentrenada
+            cnn_output = self.cnn(x[:, t, :, :, :])
+            conv_out.append(cnn_output.view(batch_size, -1))
         conv_out = torch.stack(conv_out, dim=1)
         rnn_out, _ = self.rnn(conv_out)
         final_out = self.fc(rnn_out[:, -1, :])
         return final_out
-
-

@@ -67,13 +67,13 @@ def id_to_key(key: int) -> str:
         str - The key name.
     """
     if key == 1:
-        return "A"
+        return "A "
     if key == 2:
-        return "D"
+        return "D "
     if key == 3:
-        return "W"
+        return "W "
     if key == 4:
-        return "S"
+        return "S "
     if key == 5:
         return "AW"
     if key == 6:
@@ -82,4 +82,4 @@ def id_to_key(key: int) -> str:
         return "DW"
     if key == 8:
         return "DS"
-    return "none"
+    return "- "

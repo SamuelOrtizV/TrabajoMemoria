@@ -1,8 +1,8 @@
-# Ignorar la carpeta de entrenamiento
-# train_dataset/
+# Ignorar la carpeta de datos
+datasets/
 
 # Ignorar la carpeta de prueba
-# test_dataset/
+test_dataset/
 
 # Ignorar la carpeta de datos crudos
 raw_data/
@@ -18,3 +18,7 @@ balanced_data/
 
 # Ignorar la carpeta de test scripts
 test_scripts/
+
+# Ignorar la carpeta de predicciones
+predictions csv/
+

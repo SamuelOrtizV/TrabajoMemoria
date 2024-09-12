@@ -34,8 +34,8 @@ def preprocess_image(img, width, height):
     :returns:
         numpy ndarray - image as a numpy array of dimensions [width, height, 1]
     """
-    bnw_frame = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    processed_image = cv2.resize(bnw_frame, (width, height))
+    #bnw_frame = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    processed_image = cv2.resize(img, (width, height))
 
     #return processed_image
 

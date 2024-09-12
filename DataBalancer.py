@@ -6,10 +6,15 @@ import random
 import math
 from getkeys import id_to_key
 
-data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\data"
+"""
+SOLO SE DEBE BALANCEAR LOS DATOS DE ENTRENAMIENTO
+"""
+
+data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data"
 data_path_balanced = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\balanced_data"
 
 DATA_FRAME_SIZE = 5
+TRAIN_GROUP_SIZE = 1000
 
 def get_data_info(save_path):
     """
@@ -80,6 +85,31 @@ def get_label_percentage(labels_count):
 
     return labels_percentage
 
+def group_and_shuffle_files(files, group_size):
+    """
+    Agrupa los archivos en grupos de tamaño `group_size`, mezcla aleatoriamente esos grupos y actualiza la ID de cada imagen.
+
+    :param files: Lista con la información de las imágenes.
+    :param group_size: Tamaño de cada grupo.
+    :return: Lista con los archivos agrupados, mezclados y con IDs actualizadas.
+    """
+    # Dividir en grupos
+    groups = [files[i:i + group_size] for i in range(0, len(files), group_size)]
+    
+    # Mezclar los grupos
+    random.shuffle(groups)
+    
+    # Actualizar la ID de cada imagen
+    updated_files = []
+    for group_index, group in enumerate(groups):
+        for file in group:
+            parts = file.split("_")
+            parts[0] = str(group_index * group_size + group.index(file))
+            updated_file = "_".join(parts)
+            updated_files.append(updated_file)
+    
+    return updated_files
+
 
 # ---------------------------------------Función provisoria-------------------------------------------------
 def get_balanced_data(sorted_files, labels):
@@ -106,7 +136,7 @@ def get_balanced_data(sorted_files, labels):
         if flag: # 
             balanced_files.extend(data_frame) # Agregar data_frame a balanced_files
         else:
-            # Tener un 10% de probabilidad de agregar data_frame a balanced_files
+            # Tener un 10% de probabilidad de agregar data_frame a balanced_files para los casos de "W"
             if random.random() < 0.1:
                 balanced_files.extend(data_frame)
 
@@ -127,16 +157,15 @@ def save_data(balanced_files, destination_path, source_path) -> None:
         img = cv2.imread(source)
         cv2.imwrite(destination, img)
 
-
-
-
         
+start_time = time.time()
 
 files = get_data_info(data_path)
 sorted_files = sort_files(files)
 labels = get_data_labels(sorted_files)
+
 balanced_files = get_balanced_data(sorted_files, labels)
-""" balanced_labels = get_data_labels(balanced_files)
+balanced_labels = get_data_labels(balanced_files)
 
 labels_count = get_labels_count(labels)
 balanced_labels_count = get_labels_count(balanced_labels)
@@ -144,14 +173,20 @@ balanced_labels_count = get_labels_count(balanced_labels)
 labels_percentage = get_label_percentage(labels_count)
 balanced_labels_percentage = get_label_percentage(balanced_labels_count)
 
-print(labels_count)
-print(balanced_labels_count)
+print("Numero de etiquetas: \n", labels_count)
+print("Numero de etiquetas balanceadas: \n", balanced_labels_count)
 
-print(labels_percentage)
-print(balanced_labels_percentage) """
+print("porcentaje de etiquetas: \n", labels_percentage)
+print("porcentaje de etiquetas balanceadas: \n",balanced_labels_percentage)
 
 print("Balanceando los datos...", end="\r")
 
 save_data(balanced_files, data_path_balanced, data_path)
 
 print("Balance de datos completo. Datos balanceados guardados en la carpeta 'balanced_data'.")
+
+end_time = time.time() - start_time  # Tiempo de finalización del epoch
+    # Convertir end_time a formato hh:mm:ss
+end_time = time.strftime("%H:%M:%S", time.gmtime(end_time))
+
+print(f"Tiempo total: {end_time}")

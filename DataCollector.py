@@ -8,8 +8,8 @@ from getkeys import key_check, keys_to_id
 # IDEA, SEPARAR LAS ENTRADAS EN DOS GRADOS DE LIBERTAD. GUARDAR LOS PRIMEDIOS DE LAS LECTURAS DE CADA GRADO DE LIBERTAD CAPTURADO EN UNA IMAGEN
 
 # Define the size of the screen capture
-WIDTH = 128
-HEIGHT = 72 #128 x 72 es apenas distinguible por el ojo humano, un buen punto de partida
+WIDTH = 426
+HEIGHT = 240
 
 data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data"
 
@@ -66,7 +66,7 @@ def data_collector(
         full_screen: bool = False,
         show_screen_capture: bool = False,
         max_fps: int = 5,
-        data_path: str = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\data"
+        data_path: str = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data"
 ) -> None:
     """
     Captura la pantalla y guarda las imágenes en una carpeta con la etiqueta correspondiente a las teclas presionadas.
@@ -116,11 +116,13 @@ def data_collector(
 
             if keys == "Q":
                 raise KeyboardInterrupt
+            
             elif keys == "P":
-                print("Se ha pausado la captura de datos. Presione 'P' nuevamente para reanudar.", end="\r")
-                time.sleep(1)
+                print("La captura de datos se encuentra en pausa. Presione 'P' para reanudar.                               ", end="\r")                
                 while key_check() != "P":
                     time.sleep(0.1)
+                time.sleep(1)
+
             elif keys == "E":
                 print("Se han eliminado las últimas imágenes capturadas.")
                 num_imgs_to_delete = max_fps * 2
@@ -159,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_fps', type=int, default=5, required=False, help='Máximo número de fotogramas por segundo')
     parser.add_argument('--full_screen', type=bool, default=False, required=False, help='Captura toda la pantalla o una ventana') 
     parser.add_argument('--show_screen_capture', type=bool, default=False, required=False, help='Muestra la grabación de la pantalla')
-    parser.add_argument('--data_path', type=str, default=r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\data", required=False, help='Ruta donde se guardarán las imágenes')
+    parser.add_argument('--data_path', type=str, default=r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data", required=False, help='Ruta donde se guardarán las imágenes')
 
     args = parser.parse_args()
 
