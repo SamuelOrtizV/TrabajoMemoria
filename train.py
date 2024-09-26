@@ -22,14 +22,14 @@ dropout = 0 # Se necesita num_layers > 1 para que el dropout tenga efecto
 bias = True
 
 seq_len = 5 # Número de imágenes a considerar en la secuencia
-batch_size = 1 # Número de secuencias a considerar en paralelo
+batch_size = 16 # Número de secuencias a considerar en paralelo
 num_epochs = 20 # Número de veces que se recorrerá el dataset
 learning_rate = 0.001 
 
 # Definir las rutas de los directorios de datos y de guardado de modelos
-train_data_dir = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\train_dataset"
-validation_data_dir = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\validation_dataset"
-save_dir = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models"
+train_data_dir = "./datasets/train_dataset"
+validation_data_dir = "./datasets/validation_dataset"
+save_dir = "./trained_models"
 
 model_name = "model_EffNet_b0_256_epoch"
 

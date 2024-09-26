@@ -10,7 +10,7 @@ from getkeys import id_to_key
 SOLO SE DEBE BALANCEAR LOS DATOS DE ENTRENAMIENTO
 """
 
-data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data"
+data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\raw_data"
 data_path_balanced = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\balanced_data"
 
 DATA_FRAME_SIZE = 5
@@ -181,7 +181,7 @@ print("porcentaje de etiquetas balanceadas: \n",balanced_labels_percentage)
 
 print("Balanceando los datos...", end="\r")
 
-save_data(balanced_files, data_path_balanced, data_path)
+#save_data(balanced_files, data_path_balanced, data_path)
 
 print("Balance de datos completo. Datos balanceados guardados en la carpeta 'balanced_data'.")
 

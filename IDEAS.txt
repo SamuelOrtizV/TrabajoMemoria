@@ -4,13 +4,10 @@ Para el balance, usar ponderaciones mayores para todo aquello que no sea ir adel
 
 Incrementar el batch size durante en entrenamiento para acelararlo
 
-Usar algún tipo de compresor de imagenes para reducir su tamaño sin perder calidad en la medida de lo posible
+Usar algún tipo de compresor de imagenes para reducir su tamaño sin perder calidad en la medida de lo posible -> en la recolección de datos
 
 Cambiar los controles y separarlos en 2 grados de libertad. Crear una etiqueta con 2 componentes con numeros enteros del 0 al 200, donde 100 sería un valor neutro
 y 0 y 200 serían los valores máximos ej.: Acelerar o frenar completamente, Giro cerrado a la derecha o izquierda.
 
 Para entrada de teclado, contar el tiempo que se presionó una tecla y realizar un porcentaje de las teclas presionadas durante 1 frame, luego este valor separarlo
 en los 2 grados de libertad.
-
-Para el entrenamiento. Separar los datos de entrenamiento en paquetes. Por ejemplo de 1000 imágenes y desordenar los paquetes de forma aleatoria, de tal manera que se
-distribuyan mejor los datos de distintos escenarios para los conjuntos de entrenamiento y prueba.

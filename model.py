@@ -9,52 +9,36 @@ class RacingDataset(Dataset):
         self.data_dir = data_dir
         self.seq_len = seq_len
         self.transform = transform
-        #self.image_paths = sorted([os.path.join(data_dir, f) for f in os.listdir(data_dir)])
-        self.data = self.load_data()  # Cargar tus datos aquí
-        self.labels = self.load_labels()  # Cargar tus etiquetas aquí
-        self.data_dimension = self.get_data_dimension()
+        self.image_raw_paths = os.listdir(data_dir) 
+        self.image_paths = sorted(self.image_raw_paths, key=lambda x: int(x.split('_')[0])) # Ordenar las imágenes por número de secuencia
+        self.data_dimension = self.get_data_dimension()      
+    
 
-    # CREO QUE AL CARGAR LOS STRINGS VA A DESORDENAR LOS DATOS, PROBAR IMPRIMIENDO LOS NOMBRES DE LOS ARCHIVOS
-
-    def load_data(self):
-        data = []
-        for file in os.listdir(self.data_dir):
-            image = Image.open(os.path.join(self.data_dir, file)).convert('RGB')
-            data.append(image)
-        return data        
-
-    def load_labels(self):
-        labels = []
-        for file in os.listdir(self.data_dir):
-            label = int(file.split('_')[1].split(".")[0])
-            labels.append(label)
-        return labels
+    def load_data(self, idx):
+        return Image.open(os.path.join(self.data_dir, self.image_paths[idx]))
     
     def get_data_dimension(self):
-        image = self.data[0]
+        image = self.load_data(0)
         return image.size
 
     def __len__(self):
-        # El tamaño del dataset es el número de imágenes menos el tamaño de la secuencia más 1
-        return len(self.data) - self.seq_len + 1
+        return len(self.image_paths)
 
     def __getitem__(self, idx):
-        # Crear una secuencia de imágenes
-        
-        if idx >= self.seq_len - 1: 
-            images_seq = self.data[idx - self.seq_len : idx]     
-        else:
-            print("ALOOO")
-            images_seq = []
-            # Comenzar desde idx - self.seq_len + 1 y terminar en idx
-            for i in range(self.seq_len):
-                current_idx = idx - self.seq_len + 1 + i
-                if self.data[current_idx] is not None:
-                    images_seq.append(self.data[current_idx])
-                else:
-                    images_seq.append(Image.new('RGB', self.data_dimension, (0, 0, 0)))            
+        images_seq = []
+        img_names = [] 
 
-        label = self.labels[idx]
+        # Comenzar desde idx - self.seq_len + 1 y terminar en idx
+        for i in range(self.seq_len):
+            current_idx = idx - self.seq_len + 1 + i
+
+            image = self.load_data(current_idx)
+            img_name = self.image_paths[current_idx]
+
+            img_names.append(img_name)
+            images_seq.append(image)
+
+        label = int(self.image_paths[idx].split('_')[1].split(".")[0])
 
         if self.transform:
             images_seq = [self.transform(image) for image in images_seq]
@@ -66,7 +50,7 @@ class RacingDataset(Dataset):
         else:
             raise RuntimeError("La lista de imágenes está vacía, no se puede apilar.")
 
-        return images_seq, label
+        return images_seq, label#, img_names #Se puede quitar img_names si no se necesita
     
 # Definición del modelo    
 class SimpleRNN(nn.Module):
@@ -85,9 +69,15 @@ class SimpleRNN(nn.Module):
     """
     def __init__(self, pretrained_cnn, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True):
         super(SimpleRNN, self).__init__()
+        self.cnn = pretrained_cnn
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.input_size = input_size
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.bias = bias
         
         # Usar el modelo preentrenado
-        self.cnn = pretrained_cnn
         self.cnn.classifier = nn.Identity()  # Quitar la última capa de clasificación
         #self.cnn.eval()  # Poner el modelo en modo evaluación
         
@@ -96,7 +86,6 @@ class SimpleRNN(nn.Module):
             param.requires_grad = False
         
         # Obtener el tamaño de la salida de la CNN
-        self.input_size = input_size
         conv_output_size = self._get_conv_output_size()
         
         # Definir la capa RNN y la capa totalmente conectada
