@@ -41,7 +41,7 @@ class RacingDataset(Dataset):
         label = int(self.image_paths[idx].split('_')[1].split(".")[0])
 
         if self.transform:
-            images_seq = [self.transform(image) for image in images_seq]
+            images_seq = [self.transform(image) for image in images_seq] #IDEA: Aplicar transformaciones a cada imagen de la secuencia de imágenes en lugar de a la secuencia completa
 
         # Convertir la lista de imágenes a un tensor de tamaño (seq_len, Channels, Height, Width)
 
@@ -67,7 +67,7 @@ class SimpleRNN(nn.Module):
         dropout (float, optional): Probabilidad de dropout.
         bias (bool, optional): Si se incluye sesgo en las capas lineales.
     """
-    def __init__(self, pretrained_cnn, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True):
+    def __init__(self, pretrained_cnn, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True, cnn_train = True):
         super(SimpleRNN, self).__init__()
         self.cnn = pretrained_cnn
         self.hidden_size = hidden_size
@@ -81,9 +81,9 @@ class SimpleRNN(nn.Module):
         self.cnn.classifier = nn.Identity()  # Quitar la última capa de clasificación
         #self.cnn.eval()  # Poner el modelo en modo evaluación
         
-        # Desactivar el gradiente para las capas convolucionales preentrenadas, de esta forma no se actualizarán los pesos durante el entrenamiento
-        for param in self.cnn.parameters():
-            param.requires_grad = False
+        if not cnn_train:
+            for param in self.cnn.parameters():# Desactivar el gradiente para las capas convolucionales preentrenadas, de esta forma no se actualizarán los pesos durante el entrenamiento
+                param.requires_grad = False
         
         # Obtener el tamaño de la salida de la CNN
         conv_output_size = self._get_conv_output_size()

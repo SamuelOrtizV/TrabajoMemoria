@@ -2,7 +2,7 @@ from game_control import PressKey, ReleaseKey, W, A, S, D
 import time
 
 # Tiempo de espera entre acciones de virar. Mayores tiempos provocan giros más pronunciados y viceversa.
-SLEEP_TIME = 0.1 # Debe ser menor que 1/FPS
+SLEEP_TIME = 0.19 # Debe ser menor que 1/FPS
 
 # Definición de las decisiones posibles
 
@@ -11,7 +11,7 @@ def none():
     """
     No se presiona ninguna tecla.
     """
-    ReleaseKey(W)
+    #ReleaseKey(W)
     ReleaseKey(A)
     ReleaseKey(S)
     ReleaseKey(D)
@@ -21,7 +21,7 @@ def move_left():
     Se presiona la tecla 'A'.
     """
     PressKey(A)
-    ReleaseKey(W)
+    #ReleaseKey(W)
     ReleaseKey(S)
     ReleaseKey(D)
     time.sleep(SLEEP_TIME)
@@ -32,7 +32,7 @@ def move_right():
     Se presiona la tecla 'D'.
     """
     PressKey(D)
-    ReleaseKey(W)
+    #ReleaseKey(W)
     ReleaseKey(S)
     ReleaseKey(A)
     time.sleep(SLEEP_TIME)
@@ -56,7 +56,8 @@ def move_back():
     ReleaseKey(W)
     ReleaseKey(A)
     ReleaseKey(D)
-    #ReleaseKey(S)
+    time.sleep(SLEEP_TIME)
+    ReleaseKey(S)
 # 5 = AW
 def move_left_forward():
     """
@@ -80,7 +81,7 @@ def move_left_back():
     ReleaseKey(D)
     time.sleep(SLEEP_TIME)
     ReleaseKey(A)
-    #ReleaseKey(S)
+    ReleaseKey(S)
 # 7 = DW
 def move_right_forward():
     """
@@ -104,4 +105,4 @@ def move_right_back():
     ReleaseKey(A)
     time.sleep(SLEEP_TIME)
     ReleaseKey(D)
-    #ReleaseKey(S)
+    ReleaseKey(S)

@@ -141,6 +141,24 @@ def get_balanced_data(sorted_files, labels):
                 balanced_files.extend(data_frame)
 
     return balanced_files  
+
+def get_recomended_weights(labels_percentage):
+    """
+    Obtiene los pesos recomendados para cada etiqueta.
+
+    :param labels_percentage: Diccionario con el porcentaje de imágenes por etiqueta.
+    :return: Diccionario con los pesos recomendados para cada etiqueta.
+    """
+    total = sum(labels_percentage.values())
+    weights = {}
+    
+    for label, count in labels_percentage.items():
+        if count == 0:
+            weights[label] = 0  # Asignar un peso de 0 si el porcentaje es 0
+        else:
+            weights[label] = round(total / (count * 100), 2)
+
+    return weights
           
 def save_data(balanced_files, destination_path, source_path) -> None:
     """
@@ -173,17 +191,21 @@ balanced_labels_count = get_labels_count(balanced_labels)
 labels_percentage = get_label_percentage(labels_count)
 balanced_labels_percentage = get_label_percentage(balanced_labels_count)
 
+weights = get_recomended_weights(labels_percentage)
+
 print("Numero de etiquetas: \n", labels_count)
-print("Numero de etiquetas balanceadas: \n", balanced_labels_count)
+#print("Numero de etiquetas balanceadas: \n", balanced_labels_count)
 
 print("porcentaje de etiquetas: \n", labels_percentage)
-print("porcentaje de etiquetas balanceadas: \n",balanced_labels_percentage)
+#print("porcentaje de etiquetas balanceadas: \n",balanced_labels_percentage)
 
-print("Balanceando los datos...", end="\r")
+print("Pesos recomendados: \n", weights)
+
+#print("Balanceando los datos...", end="\r")
 
 #save_data(balanced_files, data_path_balanced, data_path)
 
-print("Balance de datos completo. Datos balanceados guardados en la carpeta 'balanced_data'.")
+#print("Balance de datos completo. Datos balanceados guardados en la carpeta 'balanced_data'.")
 
 end_time = time.time() - start_time  # Tiempo de finalización del epoch
     # Convertir end_time a formato hh:mm:ss

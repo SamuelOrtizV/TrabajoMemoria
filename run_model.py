@@ -14,30 +14,30 @@ from PIL import Image
 
 
 # Dimensiones de la imagen que entra al modelo
-WIDTH = 128 
-HEIGHT = 72
+WIDTH = 224
+HEIGHT = 224
 
 # Definición de parámetros
 pretrained_cnn = models.efficientnet_b0(weights='IMAGENET1K_V1') #models.efficientnet_v2_s(weights='IMAGENET1K_V1')
-hidden_size = 128 # Número de neuronas en la capa oculta 512 usado por Iker
+hidden_size = 256 # Número de neuronas en la capa oculta 512 usado por Iker
 output_size = 9 # Número de clases (W, A, S, D, WA, WD, SA, SD, NONE)
-input_size = (3, 128, 72)  # 16:9 ratio
+input_size = (3, HEIGHT, WIDTH)  # 16:9 ratio
 num_layers = 1
 dropout = 0
 bias = True
 
 seq_len = 5 # Número de imágenes a considerar en la secuencia
-batch_size = 2 # Número de secuencias a considerar en paralelo
-num_epochs = 30 # Número de veces que se recorrerá el dataset
-learning_rate = 0.001
+
+MODEL_NAME = "Oval_Model_3_EffNet_b0_CNNGRAD_256_epoch_17.pth"
+
 
 # Definir las transformaciones
 transform = transforms.Compose([
-    transforms.Resize((HEIGHT, WIDTH)),  # Cambia el tamaño de las imágenes a 72x128 (height x width)
-    transforms.Grayscale(num_output_channels=3),  # Convierte las imágenes a escala de grises con 3 canales
-    transforms.ToTensor(),  # Convierte las imágenes a tensores
+    transforms.Resize((224, 224)),  # Cambia el tamaño de las imágenes a (height x width)
+    transforms.ToTensor(),         # Convierte las imágenes a tensores
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalizar la imagen
 ])
+
 
 
 def run_model(
@@ -46,7 +46,7 @@ def run_model(
         full_screen: bool = False,
         show_screen_capture: bool = False,
         max_fps: int = 5,
-        model_path: str = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\model_epoch_2_512.pth",
+        model_path: str = fr"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\{MODEL_NAME}" #,
 ) -> None:
     # print countdown 5 seconds
     for i in list(range(5))[::-1]:
@@ -65,8 +65,10 @@ def run_model(
 
     # Cargar el modelo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Usando", "cuda" if torch.cuda.is_available() else "cpu", "como dispositivo.\n\n\n\n\n")
 
-    model = SimpleRNN(pretrained_cnn, hidden_size, output_size, input_size, num_layers, dropout, bias)
+    model = SimpleRNN(pretrained_cnn = pretrained_cnn, hidden_size = hidden_size, output_size = output_size,
+                       input_size = input_size, num_layers = num_layers, dropout = dropout, bias = bias)
     model.load_state_dict(torch.load(model_path, weights_only=True))
     model.eval()
     model.to(device)
@@ -79,29 +81,35 @@ def run_model(
         while True:        
             start_time = time.time()
 
-            img = capture_screen(region)            
-            preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
+            img = capture_screen(region)        
+            #preprocessed_img = preprocess_image(img, WIDTH, HEIGHT) # CREO QUE ESTA LINEA ES INNECESARIA
             # Convertir la imagen preprocesada a un objeto PIL y aplicar las transformaciones
-            preprocessed_img = Image.fromarray(preprocessed_img.astype(np.uint8)).convert('L')
-            preprocessed_img = transform(preprocessed_img).numpy()
+            preprocessed_img = Image.fromarray(img.astype(np.uint8)).convert('RGB')
+            preprocessed_img = transform(preprocessed_img)#.numpy() 
+
+            """NO SE SI ES CORRECTO APLICAR LAS TRANSFORMACIONES AQUI"""
+
 
             # Añadir la imagen preprocesada al buffer de secuencia
             sequence_buffer.append(preprocessed_img)
         
-            # Mantener solo las últimas SEQUENCE_LENGTH imágenes en el buffer
+            # Mantener solo las últimas imágenes en el buffer
             if len(sequence_buffer) > seq_len:
                 sequence_buffer.pop(0)
 
             # Verificar si tenemos suficientes imágenes para una secuencia completa
             if len(sequence_buffer) == seq_len:
-
                 # Convertir el buffer de secuencia a un numpy.ndarray y luego a un tensor de PyTorch
                 sequence_array = np.array(sequence_buffer)
-                sequence_tensor = torch.tensor(sequence_array, dtype=torch.float32).unsqueeze(0).to('cuda')
+                sequence_tensor = torch.tensor(sequence_array, dtype=torch.float32).unsqueeze(0).to('cuda') # NO SE SI CONVERTIR DE NUEVO A TENSOR
+                #print("Tamaño secuence tensor", sequence_tensor.size())
+                #print(type(sequence_tensor))
 
                 # Asegurarse de que el tensor tiene la forma correcta [batch_size, seq_len, channels, height, width]
                 if sequence_tensor.ndim == 4:
                     sequence_tensor = sequence_tensor.unsqueeze(2)  # Añadir dimensión de canales
+                    print("WARNING: Se ha añadido una dimensión de canales al tensor de entrada.")
+
 
                 # Habilitar precisión mixta
                 with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
@@ -110,14 +118,29 @@ def run_model(
                 # Obtener la predicción del modelo
                 prediction = torch.argmax(output, dim=1).item()
 
-                print(f"{cont} Modelo funcionando! Predicción del modelo: {id_to_key(prediction)}", end="\r")
+                if cont == 0:
+                    moving_dots = "   "
+                elif cont == 1:
+                    moving_dots = ".  "
+                elif cont == 2:
+                    moving_dots = ".. "
+                elif cont == 3:
+                    moving_dots = "..."
+                elif cont == 4:
+                    moving_dots = " .."
+                elif cont == 5:
+                    moving_dots = "  ."
+
+
+                print(f"{moving_dots} Modelo funcionando! Predicción del modelo: {id_to_key(prediction)}", end="\r")
+                
 
                 cont += 1
 
-                if cont >= 10:
+                if cont > 5:
                     cont = 0
 
-                """ if prediction == 0:
+                if prediction == 0:
                     none()
                 elif prediction == 1:
                     move_left()
@@ -134,7 +157,7 @@ def run_model(
                 elif prediction == 7:
                     move_left_back()
                 elif prediction == 8:
-                    move_right_back() """
+                    move_right_back()
 
             keys = key_check()
 
@@ -166,12 +189,12 @@ if __name__ == "__main__":
 
     # Configurar argumentos
     parser = argparse.ArgumentParser(description="Ejecutar el modelo de conducción autónoma.")
-    parser.add_argument("--width", type=int, default=1600, help="Ancho de la región de captura.")
-    parser.add_argument("--height", type=int, default=900, help="Alto de la región de captura.")
-    parser.add_argument("--full_screen", type=bool, default=False, help="Capturar pantalla completa.")
+    parser.add_argument("--width", type=int, default=1920, help="Ancho de la región de captura.")
+    parser.add_argument("--height", type=int, default=1080, help="Alto de la región de captura.")
+    parser.add_argument("--full_screen", type=bool, default=True, help="Capturar pantalla completa.")
     parser.add_argument("--show_screen_capture", type=bool, default=False, help="Mostrar captura de pantalla.")
     parser.add_argument("--max_fps", type=int, default=5, help="Máximo número de fotogramas por segundo.")
-    parser.add_argument("--model_path", type=str, default=r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\model_epoch_1.pth", help="Ruta del modelo entrenado.")
+    parser.add_argument("--model_path", type=str, default=fr"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\{MODEL_NAME}", help="Ruta del modelo entrenado.")
 
     args = parser.parse_args()
 
@@ -186,4 +209,3 @@ if __name__ == "__main__":
         model_path=args.model_path
     )
 
-        

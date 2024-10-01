@@ -11,3 +11,5 @@ y 0 y 200 serían los valores máximos ej.: Acelerar o frenar completamente, Gir
 
 Para entrada de teclado, contar el tiempo que se presionó una tecla y realizar un porcentaje de las teclas presionadas durante 1 frame, luego este valor separarlo
 en los 2 grados de libertad.
+
+Reunir datos en una pista simple y una vez funcione implementar otras más complejas

@@ -66,7 +66,7 @@ def data_collector(
         full_screen: bool = False,
         show_screen_capture: bool = False,
         max_fps: int = 5,
-        data_path: str = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data"
+        data_path: str = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\raw_data"
 ) -> None:
     """
     Captura la pantalla y guarda las imágenes en una carpeta con la etiqueta correspondiente a las teclas presionadas.
@@ -109,6 +109,7 @@ def data_collector(
             start_time = time.time()            
 
             img = capture_screen(region)
+            # INCLUIR LA TRANSFORMACIÓN DE IMG EN NUMPY ARRAY DENTRI DE LA FUNCIÓN preprocess_image
             preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
 
             keys = key_check()
@@ -161,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_fps', type=int, default=5, required=False, help='Máximo número de fotogramas por segundo')
     parser.add_argument('--full_screen', type=bool, default=False, required=False, help='Captura toda la pantalla o una ventana') 
     parser.add_argument('--show_screen_capture', type=bool, default=False, required=False, help='Muestra la grabación de la pantalla')
-    parser.add_argument('--data_path', type=str, default=r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data", required=False, help='Ruta donde se guardarán las imágenes')
+    parser.add_argument('--data_path', type=str, default=r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\raw_data", required=False, help='Ruta donde se guardarán las imágenes')
 
     args = parser.parse_args()
 
