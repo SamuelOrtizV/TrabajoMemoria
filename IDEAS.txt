@@ -1,9 +1,5 @@
 Probar el modelo desde lo más basíco e ir descartando problemas.
 
-Para el balance, usar ponderaciones mayores para todo aquello que no sea ir adelante.
-
-Incrementar el batch size durante en entrenamiento para acelararlo
-
 Usar algún tipo de compresor de imagenes para reducir su tamaño sin perder calidad en la medida de lo posible -> en la recolección de datos
 
 Cambiar los controles y separarlos en 2 grados de libertad. Crear una etiqueta con 2 componentes con numeros enteros del 0 al 200, donde 100 sería un valor neutro
@@ -13,3 +9,15 @@ Para entrada de teclado, contar el tiempo que se presionó una tecla y realizar 
 en los 2 grados de libertad.
 
 Reunir datos en una pista simple y una vez funcione implementar otras más complejas
+
+TOMAR EL MODELO DE IKER Y SACAR LOS PESOS QUE USA LA PARTE CNN DE SU MODELO, LUEGO CONGELARLOS
+
+Color Jitter
+
+Images dropout
+
+Nombre trained models: Model_{cnn_name}_{seq_len}_{RNN_size}_epoch{epoch}.pth
+
+LR que decaiga con el tiempo
+
+Velocimetro en pantalla

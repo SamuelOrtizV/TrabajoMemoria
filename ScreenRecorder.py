@@ -3,7 +3,7 @@ import time
 import cv2
 import numpy as np
 
-from getkeys import key_check
+from inputs.getkeys import key_check
 
 
 def capture_screen(region):

@@ -16,9 +16,8 @@ models/
 # Ignorar la carpeta de datos balanceados
 balanced_data/
 
-# Ignorar la carpeta de test scripts
-test_scripts/
-
 # Ignorar la carpeta de predicciones
 predictions csv/
 
+# Ignorar la carpeta de scripts antiguos
+old_scripts/

@@ -4,14 +4,14 @@ import os
 import time
 import cv2
 from ScreenRecorder import capture_screen, show_screen_capture, preprocess_image
-from getkeys import key_check, id_to_key
-from DriveInputs import none, move_left, move_right, move_forward, move_back, move_left_forward, move_right_forward, move_left_back, move_right_back
+from inputs.getkeys import key_check, id_to_key
+from inputs.DriveInputs import none, move_left, move_right, move_forward, move_back, move_left_forward, move_right_forward, move_left_back, move_right_back
 from torchvision import transforms, models
 import time
 from model import SimpleRNN
 import torch
 from PIL import Image
-
+import threading
 
 # Dimensiones de la imagen que entra al modelo
 WIDTH = 224
@@ -38,7 +38,25 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalizar la imagen
 ])
 
+# Variable global para controlar la interrupción del teclado
+stop_event = threading.Event()
+pause_event = threading.Event()
 
+def key_detection():
+    global stop_event
+    while not stop_event.is_set():
+        keys = key_check()
+        if keys == "Q":
+            stop_event.set()
+        elif keys == "P":
+            if pause_event.is_set():
+                pause_event.clear()
+                print("Reanudando el modelo...", end="\r")
+            else:
+                print("                                                                                            ", end="\r")
+                pause_event.set()
+            time.sleep(1)  # Evitar múltiples detecciones rápidas
+            
 
 def run_model(
         width: int = 1600,
@@ -74,20 +92,28 @@ def run_model(
     model.to(device)
 
 
+    # Iniciar el hilo de detección de teclas
+    key_thread = threading.Thread(target=key_detection)
+    key_thread.start()
+
     # Bucle principal
     sequence_buffer = []
     cont = 0
-    try:
-        while True:        
+    while not stop_event.is_set():
+        try:                
             start_time = time.time()
+
+            # Pausar el bucle si pause_event está establecido
+            if pause_event.is_set():
+                print("Modelo pausado. Presione 'P' para reanudar.             ", end="\r")
+                time.sleep(0.1)
+                continue
 
             img = capture_screen(region)        
             #preprocessed_img = preprocess_image(img, WIDTH, HEIGHT) # CREO QUE ESTA LINEA ES INNECESARIA
             # Convertir la imagen preprocesada a un objeto PIL y aplicar las transformaciones
             preprocessed_img = Image.fromarray(img.astype(np.uint8)).convert('RGB')
             preprocessed_img = transform(preprocessed_img)#.numpy() 
-
-            """NO SE SI ES CORRECTO APLICAR LAS TRANSFORMACIONES AQUI"""
 
 
             # Añadir la imagen preprocesada al buffer de secuencia
@@ -139,7 +165,6 @@ def run_model(
 
                 if cont > 5:
                     cont = 0
-
                 if prediction == 0:
                     none()
                 elif prediction == 1:
@@ -161,7 +186,7 @@ def run_model(
 
             keys = key_check()
 
-            if keys == "Q":
+            """ if keys == "Q":
                 raise KeyboardInterrupt
             elif keys == "P":
                 print("Se ha pausado el modelo. Presione 'P' nuevamente para reanudar.", end="\r")
@@ -169,7 +194,7 @@ def run_model(
                     time.sleep(0.1)
                 time.sleep(1)
                 print("                                                                                            ", end="\r")
-
+            """
             """ if show_screen_capture:
                 cv2.imshow("Screen Capture", img)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -179,11 +204,13 @@ def run_model(
             if elapsed_time < 1 / max_fps:
                 time.sleep(1 / max_fps - elapsed_time)
 
-    except KeyboardInterrupt:
-        print("\nInterrupción de teclado")
+        except KeyboardInterrupt:
+            stop_event.set()
+            print("\nInterrupción de teclado")
         
     
     print("\nSaliendo del modelo...")
+    key_thread.join()
 
 if __name__ == "__main__":
 
