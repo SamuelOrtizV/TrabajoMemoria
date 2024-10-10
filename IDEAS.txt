@@ -10,14 +10,21 @@ en los 2 grados de libertad.
 
 Reunir datos en una pista simple y una vez funcione implementar otras más complejas
 
-TOMAR EL MODELO DE IKER Y SACAR LOS PESOS QUE USA LA PARTE CNN DE SU MODELO, LUEGO CONGELARLOS
+CNN + LSTM+ STATE
 
 Color Jitter
 
 Images dropout
 
-Nombre trained models: Model_{cnn_name}_{seq_len}_{RNN_size}_epoch{epoch}.pth
+Nombre trained models: Model_{cnn_name}_{seq_len}_{input_size}_{RNN_size}_epoch{epoch}.pth
 
 LR que decaiga con el tiempo
 
 Velocimetro en pantalla
+
+Establecer una resolucion para el entrenamiento -> (480 x 270) o (240 x 135)
+
+Establecer un tiempo de vision, 1,5s?
+
+Ver que tanto afecta la longitud de la secuencia, un paper ucupo casi 23 por segundo
+

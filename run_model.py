@@ -12,30 +12,47 @@ from model import SimpleRNN
 import torch
 from PIL import Image
 import threading
+import tkinter as tk
 
-# Dimensiones de la imagen que entra al modelo
-WIDTH = 224
-HEIGHT = 224
+MODEL_NAME = "Model-efficientnet_b0-5-224-256-epoch_2.pth"
+# Model name format: Model_{cnn_name}_{seq_len}_{input_size[0]}_{hidden_size}_epoch{epoch}.pth
+
+cnn_name = MODEL_NAME.split("-")[1]
+seq_len = int(MODEL_NAME.split("-")[2])
+input_size = (int(MODEL_NAME.split("-")[3]), int(MODEL_NAME.split("-")[3]))
+hidden_size = int(MODEL_NAME.split("-")[4])
+
+print("Modelo a cargar:", MODEL_NAME)
+print("CNN:", cnn_name)
+print("Seq_len:", seq_len)
+print("Input size:", input_size)
+print("Hidden size:", hidden_size)
+
 
 # Definición de parámetros
-pretrained_cnn = models.efficientnet_b0(weights='IMAGENET1K_V1') #models.efficientnet_v2_s(weights='IMAGENET1K_V1')
-hidden_size = 256 # Número de neuronas en la capa oculta 512 usado por Iker
+#pretrained_cnn = models.efficientnet_b0(weights='IMAGENET1K_V1') #models.efficientnet_v2_s(weights='IMAGENET1K_V1')
+#hidden_size = 256 # Número de neuronas en la capa oculta 512 usado por Iker
 output_size = 9 # Número de clases (W, A, S, D, WA, WD, SA, SD, NONE)
-input_size = (3, HEIGHT, WIDTH)  # 16:9 ratio
 num_layers = 1
 dropout = 0
 bias = True
 
-seq_len = 5 # Número de imágenes a considerar en la secuencia
+#seq_len = 5 # Número de imágenes a considerar en la secuencia
 
-MODEL_NAME = "Oval_Model_3_EffNet_b0_CNNGRAD_256_epoch_17.pth"
 
 
 # Definir las transformaciones
-transform = transforms.Compose([
+""" transform = transforms.Compose([
     transforms.Resize((224, 224)),  # Cambia el tamaño de las imágenes a (height x width)
     transforms.ToTensor(),         # Convierte las imágenes a tensores
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalizar la imagen
+]) """
+
+transform = transforms.Compose([
+    transforms.Resize(input_size[0], interpolation=Image.BICUBIC),
+    transforms.Pad((0, 0, 0, 0), fill=0, padding_mode='constant'),  # Rellenar para obtener el tamaño deseado
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
 # Variable global para controlar la interrupción del teclado
@@ -59,13 +76,21 @@ def key_detection():
             
 
 def run_model(
+        model_path: str,
         width: int = 1600,
         height: int = 900,
         full_screen: bool = False,
         show_screen_capture: bool = False,
         max_fps: int = 5,
-        model_path: str = fr"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\{MODEL_NAME}" #,
+        
 ) -> None:
+    # Crear la ventana de estado
+    root = tk.Tk()
+    var = tk.StringVar()
+    var.set("Iniciando...")
+    text_label = tk.Label(root, textvariable=var, fg="green", font=("Impact", 44))
+    text_label.pack()
+    
     # print countdown 5 seconds
     for i in list(range(5))[::-1]:
         print(i + 1)
@@ -85,8 +110,8 @@ def run_model(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Usando", "cuda" if torch.cuda.is_available() else "cpu", "como dispositivo.\n\n\n\n\n")
 
-    model = SimpleRNN(pretrained_cnn = pretrained_cnn, hidden_size = hidden_size, output_size = output_size,
-                       input_size = input_size, num_layers = num_layers, dropout = dropout, bias = bias)
+    model = SimpleRNN(cnn_name = cnn_name, hidden_size = hidden_size, output_size = output_size,
+                       input_size = (3, *input_size), num_layers = num_layers, dropout = dropout, bias = bias)
     model.load_state_dict(torch.load(model_path, weights_only=True))
     model.eval()
     model.to(device)
@@ -105,9 +130,16 @@ def run_model(
 
             # Pausar el bucle si pause_event está establecido
             if pause_event.is_set():
+                var.set("CONTROL HUMANO")
+                text_label.config(fg="red")
+                root.update()
                 print("Modelo pausado. Presione 'P' para reanudar.             ", end="\r")
                 time.sleep(0.1)
                 continue
+            else:
+                var.set("CONTROL DE IA")
+                text_label.config(fg="green")
+                root.update()
 
             img = capture_screen(region)        
             #preprocessed_img = preprocess_image(img, WIDTH, HEIGHT) # CREO QUE ESTA LINEA ES INNECESARIA
@@ -184,7 +216,7 @@ def run_model(
                 elif prediction == 8:
                     move_right_back()
 
-            keys = key_check()
+            #keys = key_check()
 
             """ if keys == "Q":
                 raise KeyboardInterrupt
@@ -211,28 +243,30 @@ def run_model(
     
     print("\nSaliendo del modelo...")
     key_thread.join()
+    root.destroy()
 
 if __name__ == "__main__":
 
     # Configurar argumentos
     parser = argparse.ArgumentParser(description="Ejecutar el modelo de conducción autónoma.")
+    parser.add_argument("--model_path", type=str, default=fr"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\{MODEL_NAME}", help="Ruta del modelo entrenado.")
     parser.add_argument("--width", type=int, default=1920, help="Ancho de la región de captura.")
     parser.add_argument("--height", type=int, default=1080, help="Alto de la región de captura.")
     parser.add_argument("--full_screen", type=bool, default=True, help="Capturar pantalla completa.")
     parser.add_argument("--show_screen_capture", type=bool, default=False, help="Mostrar captura de pantalla.")
     parser.add_argument("--max_fps", type=int, default=5, help="Máximo número de fotogramas por segundo.")
-    parser.add_argument("--model_path", type=str, default=fr"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\{MODEL_NAME}", help="Ruta del modelo entrenado.")
+    
 
     args = parser.parse_args()
 
     print("Iniciando...")
 
     run_model(
+        model_path=args.model_path,
         width=args.width,
         height=args.height,
         full_screen=args.full_screen,
         show_screen_capture=args.show_screen_capture,
-        max_fps=args.max_fps,
-        model_path=args.model_path
+        max_fps=args.max_fps       
     )
 

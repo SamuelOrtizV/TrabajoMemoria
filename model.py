@@ -1,14 +1,17 @@
 import torch
 import torch.nn as nn
+import torchvision.models as models
 from torch.utils.data import Dataset
+from torchvision import transforms
 import os
 from PIL import Image
 
 class RacingDataset(Dataset):
-    def __init__(self, data_dir, seq_len, transform=None):
+    def __init__(self, data_dir, seq_len, input_size=(224, 224)):
         self.data_dir = data_dir
         self.seq_len = seq_len
-        self.transform = transform
+        self.input_size = input_size
+        self.transform = self.set_transform()
         self.image_raw_paths = os.listdir(data_dir) 
         self.image_paths = sorted(self.image_raw_paths, key=lambda x: int(x.split('_')[0])) # Ordenar las imágenes por número de secuencia
         self.data_dimension = self.get_data_dimension()      
@@ -20,6 +23,20 @@ class RacingDataset(Dataset):
     def get_data_dimension(self):
         image = self.load_data(0)
         return image.size
+    
+    def set_transform(self):
+        """ transform = transforms.Compose([
+            transforms.Resize(self.input_size[0], interpolation=Image.BICUBIC),
+            transforms.Pad((0, 0, 0, 0), fill=0, padding_mode='constant'),  # Rellenar para obtener el tamaño deseado
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]) """
+        transform = transforms.Compose([
+            transforms.Resize((self.input_size[0], int(self.input_size[0]*(9/16)))),  # Cambia el tamaño de las imágenes a (height x width)
+            transforms.ToTensor(),         # Convierte las imágenes a tensores
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalizar la imagen
+        ])
+        return transform
 
     def __len__(self):
         return len(self.image_paths)
@@ -51,7 +68,7 @@ class RacingDataset(Dataset):
             raise RuntimeError("La lista de imágenes está vacía, no se puede apilar.")
 
         return images_seq, label#, img_names #Se puede quitar img_names si no se necesita
-    
+
 # Definición del modelo    
 class SimpleRNN(nn.Module):
     """
@@ -59,7 +76,7 @@ class SimpleRNN(nn.Module):
     y una capa RNN para procesar la secuencia de características.
 
     Args:
-        pretrained_cnn (torch.nn.Module): Modelo de CNN preentrenado.
+        cnn_name (str): Nombre de la CNN a utilizar. Opciones: 'resnet18', 'efficientnet-b0', 'vgg11', etc.
         hidden_size (int): Tamaño del estado oculto de la RNN.
         output_size (int): Tamaño de la salida del modelo.
         input_size (tuple, optional): Tamaño de la entrada de las imágenes (canales, altura, ancho). Máximo tamaño es 384x384.
@@ -67,9 +84,9 @@ class SimpleRNN(nn.Module):
         dropout (float, optional): Probabilidad de dropout.
         bias (bool, optional): Si se incluye sesgo en las capas lineales.
     """
-    def __init__(self, pretrained_cnn, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True, cnn_train = True):
+    def __init__(self, cnn_name, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True, cnn_train = True):
         super(SimpleRNN, self).__init__()
-        self.cnn = pretrained_cnn
+        self.cnn_name = cnn_name
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.input_size = input_size
@@ -77,6 +94,9 @@ class SimpleRNN(nn.Module):
         self.dropout = dropout
         self.bias = bias
         
+        # Obtener la CNN preentrenada
+        self.cnn = self.get_cnn()
+
         # Usar el modelo preentrenado
         self.cnn.classifier = nn.Identity()  # Quitar la última capa de clasificación
         #self.cnn.eval()  # Poner el modelo en modo evaluación
@@ -91,6 +111,14 @@ class SimpleRNN(nn.Module):
         # Definir la capa RNN y la capa totalmente conectada
         self.rnn = nn.RNN(conv_output_size, hidden_size, num_layers=num_layers, batch_first=True, dropout=dropout, bias=bias)
         self.fc = nn.Linear(hidden_size, output_size)
+    
+    def get_cnn(self):
+        # Obtener la clase de la CNN
+        cnn_call_method = getattr(models, self.cnn_name)
+        # Instanciar el modelo
+        cnn_model = cnn_call_method(weights='IMAGENET1K_V1')        
+
+        return cnn_model
     
     def _get_conv_output_size(self):
         # Crear una entrada dummy para pasarla a través de la CNN

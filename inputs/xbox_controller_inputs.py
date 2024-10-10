@@ -48,7 +48,7 @@ class XboxControllerReader:
 
         print(f"Capturando entrada de: {self.name} (ID: {self.joystick_id})\n")
 
-    def read(self) -> Tuple[float, float, float]:
+    def read(self) -> Tuple[str, str]:
         """
         Lee el estado actual del controlador.
 
@@ -65,7 +65,12 @@ class XboxControllerReader:
             self.joystick.get_axis(5),
         )
 
-        return lx, lt, rt
+        steering = f"{lx:.2f}"
+        throttle_brake = f"{(rt - lt) / 2:.2f}"
+
+        return steering, throttle_brake
+
+        #return lx, lt, rt
     
 
 def imprimir_estado_controlador() -> None:
@@ -78,12 +83,13 @@ def imprimir_estado_controlador() -> None:
 
     try:
         while True:
-            lx, lt, rt = control.read()  # Llama al método read
-            print(f"Valor del stick izquierdo (lx): {lx:.2f}, Gatillo izquierdo (lt): {lt:.2f}, Gatillo derecho (rt): {rt:.2f}", end="\r")
+            steering, throttle_brake = control.read()  # Llama al método read
+            #print(f"Valor del stick izquierdo (lx): {lx:.2f}, Gatillo izquierdo (lt): {lt:.2f}, Gatillo derecho (rt): {rt:.2f}", end="\r")
+            print(f"Dirección: {steering}, Acelerar frenar: {throttle_brake}", end="\r")
             time.sleep(0.1)  # Pausa corta para evitar un loop muy rápido
     except KeyboardInterrupt:
         print("\nSaliendo...")
 
 
 # Ejecutar la función para leer el estado del controlador
-imprimir_estado_controlador()
+#imprimir_estado_controlador()

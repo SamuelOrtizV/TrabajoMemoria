@@ -5,13 +5,17 @@ import time
 import random
 import math
 from inputs.getkeys import id_to_key
+from PIL import Image
+import io
 
 """
 SOLO SE DEBE BALANCEAR LOS DATOS DE ENTRENAMIENTO
 """
 
-data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\raw_data"
-data_path_balanced = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\balanced_data"
+data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\validation_dataset"
+data_path_destination = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\output_data70"
+if not os.path.exists(data_path_destination):
+    os.makedirs(data_path_destination)
 
 DATA_FRAME_SIZE = 5
 TRAIN_GROUP_SIZE = 1000
@@ -159,6 +163,43 @@ def get_recomended_weights(labels_percentage):
             weights[label] = round(total / (count * 100), 2)
 
     return weights
+
+def preprocess_image(img, width, height, quality=90):
+    """
+    Redimensiona y comprime una imagen.
+
+    :param img: Imagen a redimensionar y comprimir.
+    :param width: Ancho de la imagen redimensionada.
+    :param height: Alto de la imagen redimensionada.
+    :param quality: Calidad de la compresión JPEG.
+    :return: Imagen redimensionada y comprimida.
+    """
+
+    processed_image = cv2.resize(img, (width, height))
+    pil_image = Image.fromarray(processed_image)
+
+    if pil_image.mode == 'RGBA':
+        pil_image = pil_image.convert('RGB')
+
+    buffer = io.BytesIO()
+    pil_image.save(buffer, format="JPEG", quality=quality)
+    buffer.seek(0)
+
+    compressed_image = Image.open(buffer)
+    compressed_image_np = np.asarray(compressed_image, dtype=np.uint8)
+
+    return compressed_image_np
+
+def resize_images(files, source_path, destination_path, width, height, quality=70) -> None:
+    print("Redimensionando y comprimiendo imágenes...")
+    for file in files:
+        source = os.path.join(source_path, file)
+        destination = os.path.join(destination_path, file)
+        img = cv2.imread(source)
+        if img is not None:
+            img = preprocess_image(img, width, height, quality)
+            cv2.imwrite(destination, img)
+    print("Redimension y compresión de imágenes completa.")
           
 def save_data(balanced_files, destination_path, source_path) -> None:
     """
@@ -193,6 +234,9 @@ balanced_labels_percentage = get_label_percentage(balanced_labels_count)
 
 weights = get_recomended_weights(labels_percentage)
 
+
+resize_images(files, data_path, data_path_destination, width=480, height=270, quality=70)
+
 print("Numero de etiquetas: \n", labels_count)
 #print("Numero de etiquetas balanceadas: \n", balanced_labels_count)
 
@@ -203,7 +247,7 @@ print("Pesos recomendados: \n", weights)
 
 #print("Balanceando los datos...", end="\r")
 
-#save_data(balanced_files, data_path_balanced, data_path)
+#save_data(balanced_files, data_path_destination, data_path)
 
 #print("Balance de datos completo. Datos balanceados guardados en la carpeta 'balanced_data'.")
 

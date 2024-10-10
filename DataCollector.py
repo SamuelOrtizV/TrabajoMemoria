@@ -96,12 +96,12 @@ def delete_last_images(data_path, last_img_id, num_files):
         i += 1
 
 def data_collector(
+        data_path: str,
         width: int = 1600,
         height: int = 900,
         full_screen: bool = False,
         show_screen_capture: bool = False,
         max_fps: int = 5,
-        data_path: str = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\raw_data_test"
 ) -> None:
     """
     Captura la pantalla y guarda las imágenes en una carpeta con la etiqueta correspondiente a las teclas presionadas.
@@ -141,8 +141,6 @@ def data_collector(
     key_thread.start()
 
     # Bucle principal
-    # run_app = True
-
     while not stop_event.is_set():
         try:
             start_time = time.time()
@@ -154,28 +152,10 @@ def data_collector(
                 continue            
 
             img = capture_screen(region)
-            # INCLUIR LA TRANSFORMACIÓN DE IMG EN NUMPY ARRAY DENTRI DE LA FUNCIÓN preprocess_image
             preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
 
             keys = key_check()
             output = keys_to_id(keys)
-
-            """ if keys == "Q":
-                raise KeyboardInterrupt
-            
-            elif keys == "P":
-                print("La captura de datos se encuentra en pausa. Presione 'P' para reanudar.                               ", end="\r")                
-                while key_check() != "P":
-                    time.sleep(0.1)
-                time.sleep(1)
-
-            elif keys == "E":
-                print("Se han eliminado las últimas imágenes capturadas.")
-                num_imgs_to_delete = max_fps * 2
-                last_img_id = get_last_image_number(data_path)
-                delete_last_images(data_path, last_img_id, num_imgs_to_delete)
-                print(f"Se han eliminado las últimas {num_imgs_to_delete} imágenes capturadas.")
-                continue """
             
             if delete_event.is_set():
                 #print("Se han eliminado las últimas imágenes capturadas.")
@@ -213,6 +193,7 @@ def data_collector(
             #run_app = False
             stop_event.set()
             print("\nCaptura de datos terminada por el usuario.                                   \n")
+            
     print("\nSaliendo del programa...")
     key_thread.join()
     time.sleep(1)   
