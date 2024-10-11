@@ -41,19 +41,44 @@ def sort_files(files):
     return files
   
 
-def get_data_labels(files):
+def get_data_label(file):
     """
     Obtiene las etiquetas de las imágenes guardadas en una carpeta.
 
     :param files: Lista con la información de las imágenes.
     :return: Lista con las etiquetas de las imágenes.
     """
-    labels = [f.split("_")[1].rsplit('.', 1)[0] for f in files]
+    """ labels = [f.split("_")[1].rsplit('.', 1)[0] for f in files]
 
     steering = [float(label.split(" ")[0]) for label in labels]
-    throttle = [float(label.split(" ")[1]) for label in labels]
+    throttle = [float(label.split(" ")[1]) for label in labels] """
+    label = file.split("_")[1].rsplit('.', 1)[0]
+
+    steering = float(label.split(" ")[0])
+    throttle = float(label.split(" ")[1])
 
     return steering, throttle
+
+def get_last_image_number(save_path):
+    """
+    Obtiene el número de la última imagen guardada en una carpeta.
+
+    :param save_path: Ruta donde se guardarán las imágenes.
+    :return: Número de la última imagen guardada y la cantidad de imágenes en la carpeta.
+    """
+    files = os.listdir(save_path)
+    files = [int(f.split("_")[0]) for f in files if f.endswith(".jpeg")]
+
+    dataset_size = len(files)
+
+    if dataset_size == 0:
+        return 0
+
+    files.sort()
+
+    next_img_number = max(files) + 1
+
+    return next_img_number
 
 def show_histogram(labels):
     """
@@ -220,23 +245,23 @@ def resize_images(files, source_path, destination_path, width, height, quality=7
             cv2.imwrite(destination, img)
     print("Redimension y compresión de imágenes completa.")
           
-def save_data(balanced_files, destination_path, source_path) -> None:
+def save_data(files, destination_path, source_path) -> None:
     """
     Copia las imágenes seleccionadas de una carpeta a otra.
 
-    :param balanced_files: Lista con las imágenes seleccionadas.
+    :param files: Lista con las imágenes seleccionadas.
     :param destination_path: Ruta donde se guardarán las imágenes seleccionadas.
     :param source_path: Ruta donde se encuentran las imágenes.
     """
 
-    for file in balanced_files:
+    for file in files:
         source = os.path.join(source_path, file)
         destination = os.path.join(destination_path, file)
         img = cv2.imread(source)
         cv2.imwrite(destination, img)
 
         
-start_time = time.time()
+""" start_time = time.time()
 
 files = get_data(data_path_source)
 sorted_files = sort_files(files)
@@ -249,4 +274,4 @@ end_time = time.time() - start_time  # Tiempo de finalización del epoch
 # Convertir end_time a formato hh:mm:ss
 end_time = time.strftime("%H:%M:%S", time.gmtime(end_time))
 
-print(f"Tiempo total: {end_time}")
+print(f"Tiempo total: {end_time}") """

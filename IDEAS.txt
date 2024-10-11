@@ -20,3 +20,4 @@ Establecer un tiempo de vision, 1,5s?
 
 Ver que tanto afecta la longitud de la secuencia, un paper ucupo casi 23 por segundo
 
+Programa que genere automaticamente los conjuntos de entrenamiento, validacion y prueba
