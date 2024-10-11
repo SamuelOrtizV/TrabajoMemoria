@@ -5,12 +5,13 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import os
 from PIL import Image
-
+    
 class RacingDataset(Dataset):
-    def __init__(self, data_dir, seq_len, input_size=(224, 224)):
+    def __init__(self, data_dir, seq_len, input_size=(224, 224), controller = False):
         self.data_dir = data_dir
         self.seq_len = seq_len
         self.input_size = input_size
+        self.controller = controller
         self.transform = self.set_transform()
         self.image_raw_paths = os.listdir(data_dir) 
         self.image_paths = sorted(self.image_raw_paths, key=lambda x: int(x.split('_')[0])) # Ordenar las imágenes por número de secuencia
@@ -55,8 +56,13 @@ class RacingDataset(Dataset):
             img_names.append(img_name)
             images_seq.append(image)
 
-        label = int(self.image_paths[idx].split('_')[1].split(".")[0])
-
+        if self.controller:
+            steering = float(self.image_paths[idx].split("_")[1].rsplit('.', 1)[0].split(" ")[0])
+            throttle = float(self.image_paths[idx].split("_")[1].rsplit('.', 1)[0].split(" ")[1])
+            label = torch.tensor([steering, throttle], dtype=torch.float32)
+        else:
+            label = label = [int(self.image_paths[idx].split('_')[1].split(".")[0])]
+            
         if self.transform:
             images_seq = [self.transform(image) for image in images_seq] #IDEA: Aplicar transformaciones a cada imagen de la secuencia de imágenes en lugar de a la secuencia completa
 

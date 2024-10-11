@@ -1,19 +1,23 @@
-import argparse
-import numpy as np
 import os
 import time
 import cv2
-from ScreenRecorder import capture_screen, show_screen_capture, preprocess_image
-from inputs.getkeys import key_check, keys_to_id
+from ScreenRecorder import capture_screen, preprocess_image
+from inputs.getkeys import key_check
+from inputs.xbox_controller_inputs import XboxControllerReader
 import threading
+import glob
 
-# IDEA, SEPARAR LAS ENTRADAS EN DOS GRADOS DE LIBERTAD. GUARDAR LOS PRIMEDIOS DE LAS LECTURAS DE CADA GRADO DE LIBERTAD CAPTURADO EN UNA IMAGEN
+# Parametros de entrada
+width = 1920
+height = 1080
+full_screen = True
+max_fps = 10
+data_path = "./datasets/raw"
 
-# Define the size of the screen capture
-WIDTH = 426
-HEIGHT = 240
+# Define the size of the recorded images
+WIDTH = 480
+HEIGHT = 270
 
-data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\raw_data_test"
 # Verificar si el directorio existe, si no, lo crea
 if not os.path.exists(data_path):
     os.makedirs(data_path)
@@ -43,7 +47,6 @@ def key_detection():
             delete_event.set()
             time.sleep(0.5)
 
-
 def save_images_with_labels(image, label, save_path, id):
     """
     Guarda cada imagen individualmente en formato .jpg con un nombre que incluye
@@ -55,9 +58,7 @@ def save_images_with_labels(image, label, save_path, id):
     :param start_number: Número a partir del cual iniciar el contador para el nombre de los archivos.
     """
     file_name = f"{id}_{label}.jpeg"
-
     file_path = os.path.join(save_path, file_name)
-
     cv2.imwrite(file_path, image)
 
 def get_last_image_number(save_path):
@@ -82,12 +83,22 @@ def get_last_image_number(save_path):
     return next_img_number, dataset_size
 
 def delete_last_images(data_path, last_img_id, num_files):
+    """
+    Elimina las últimas imágenes capturadas.
+
+    :param data_path: Ruta donde se guardarán las imágenes.
+    :param last_img_id: Número de la última imagen guardada.
+    :param num_files: Número de archivos a eliminar.
+    """
+
     deleted_files = 0
     i = 0
     
     while deleted_files < num_files and last_img_id - i >= 0:
-        for j in range(9):
-            file_path = os.path.join(data_path, f"{last_img_id-i}_{j}.jpeg")
+        pattern = os.path.join(data_path, f"{last_img_id-i}_*.jpeg")
+        files = glob.glob(pattern)
+        
+        for file_path in files:
             if os.path.exists(file_path):
                 os.remove(file_path)
                 deleted_files += 1
@@ -95,13 +106,19 @@ def delete_last_images(data_path, last_img_id, num_files):
                     break
         i += 1
 
+def delete_images_thread(data_path, img_id, max_fps):
+    num_imgs_to_delete = max_fps * 10
+    delete_last_images(data_path, img_id, num_imgs_to_delete)
+    img_id, dataset_size = get_last_image_number(data_path)
+    print(f"Se han eliminado las últimas {num_imgs_to_delete} imágenes capturadas. Datos guardados: {dataset_size}.")
+    delete_event.clear()
+
 def data_collector(
         data_path: str,
         width: int = 1600,
         height: int = 900,
         full_screen: bool = False,
-        show_screen_capture: bool = False,
-        max_fps: int = 5,
+        max_fps: int = 10,
 ) -> None:
     """
     Captura la pantalla y guarda las imágenes en una carpeta con la etiqueta correspondiente a las teclas presionadas.
@@ -126,10 +143,7 @@ def data_collector(
 
     print(f"Capturando una región de {width}x{height} píxeles...")
 
-    # print countdown 5 seconds
-    for i in list(range(5))[::-1]:
-        print(i + 1)
-        time.sleep(1)
+    control = XboxControllerReader()
 
     img_id, dataset_size = get_last_image_number(data_path)
     #delete_count = 0
@@ -154,28 +168,18 @@ def data_collector(
             img = capture_screen(region)
             preprocessed_img = preprocess_image(img, WIDTH, HEIGHT)
 
-            keys = key_check()
-            output = keys_to_id(keys)
+            steering, throttle_brake = control.read()
+
+            label = f"{steering} {throttle_brake}"
             
             if delete_event.is_set():
-                #print("Se han eliminado las últimas imágenes capturadas.")
-                num_imgs_to_delete = max_fps * 2
-                #delete_count += num_imgs_to_delete
-
-                #last_img_id, dataset_size = get_last_image_number(data_path)
-
-                delete_last_images(data_path, img_id, num_imgs_to_delete)
-
+                delete_thread = threading.Thread(target=delete_images_thread, args=(data_path, img_id, max_fps))
+                delete_thread.start()
+                delete_thread.join()
                 img_id, dataset_size = get_last_image_number(data_path)
-                
-                print(f"Se han eliminado las últimas {num_imgs_to_delete} imágenes capturadas. Datos guardados: {dataset_size}.                              ")
-                delete_event.clear()
                 continue
-                
 
-            #print(f"Keys: {keys} Output: {output}")
-
-            save_images_with_labels(preprocessed_img, output, data_path, img_id)
+            save_images_with_labels(preprocessed_img, label, data_path, img_id)
             img_id += 1
             dataset_size += 1
 
@@ -183,14 +187,9 @@ def data_collector(
             if wait_time > 0:
                 time.sleep(wait_time)
 
-            """ if show_screen_capture:
-                if show_screen_capture(img): #Esta parte requiere uso de hilos, NO USAR de momento           
-                    break """
-
-            print(f"Guardando {max_fps} imágenes por segundo. Datos guardados: {dataset_size}. Entrada teclado: {output}", end="\r")
+            print(f"Guardando {max_fps} imágenes por segundo. Datos guardados: {dataset_size}. Entrada: {label}", end="\r")
 
         except KeyboardInterrupt:
-            #run_app = False
             stop_event.set()
             print("\nCaptura de datos terminada por el usuario.                                   \n")
             
@@ -200,22 +199,15 @@ def data_collector(
 
 if __name__ == "__main__":
 
-    # Configuración de argumentos de línea de comandos
-    parser = argparse.ArgumentParser(description="Genera datos de entrenamiento con capturas de pantalla y etiquetas de teclas presionadas.")
-    parser.add_argument('--width', type=int, required=True, help='Ancho de la región a capturar')
-    parser.add_argument('--height', type=int, required=True, help='Altura de la región a capturar')
-    parser.add_argument('--max_fps', type=int, default=5, required=False, help='Máximo número de fotogramas por segundo')
-    parser.add_argument('--full_screen', type=bool, default=False, required=False, help='Captura toda la pantalla o una ventana') 
-    parser.add_argument('--show_screen_capture', type=bool, default=False, required=False, help='Muestra la grabación de la pantalla')
-    parser.add_argument('--data_path', type=str, default=r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\raw_data_test", required=False, help='Ruta donde se guardarán las imágenes')
-
-    args = parser.parse_args()
-
-    data_collector(
-        width=args.width,
-        height=args.height,
-        full_screen=args.full_screen,
-        show_screen_capture=args.show_screen_capture,
-        max_fps=args.max_fps,
-        data_path=args.data_path
-    )
+    try:
+        data_collector(
+            width=width,
+            height=height,
+            full_screen=full_screen,
+            max_fps=max_fps,
+            data_path=data_path
+        )
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        # que el usuario tenga que presionar enter para salir
+        input("Presione Enter para salir...")

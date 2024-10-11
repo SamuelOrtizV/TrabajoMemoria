@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 import time
 import random
 import math
@@ -8,26 +9,22 @@ from inputs.getkeys import id_to_key
 from PIL import Image
 import io
 
-"""
-SOLO SE DEBE BALANCEAR LOS DATOS DE ENTRENAMIENTO
-"""
+data_path_source = "./datasets/Old dataset/raw5fps"
+data_path_destination = "./datasets/output_data"
 
-data_path = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\validation_dataset"
-data_path_destination = r"C:\Users\PC\Documents\GitHub\TrabajoMemoria\datasets\output_data70"
 if not os.path.exists(data_path_destination):
     os.makedirs(data_path_destination)
 
 DATA_FRAME_SIZE = 5
-TRAIN_GROUP_SIZE = 1000
 
-def get_data_info(save_path):
+def get_data(save_path_source):
     """
     Obtiene la información de las imágenes guardadas en una carpeta.
 
     :param save_path: Ruta donde se guardarán las imágenes.
     :return: Lista con la información de las imágenes.
     """
-    files = os.listdir(save_path)
+    files = os.listdir(save_path_source)
     files = [f for f in files if f.endswith(".jpeg")]
 
     return files
@@ -51,9 +48,31 @@ def get_data_labels(files):
     :param files: Lista con la información de las imágenes.
     :return: Lista con las etiquetas de las imágenes.
     """
-    labels = [int(f.split("_")[1].split(".")[0]) for f in files]
+    labels = [f.split("_")[1].rsplit('.', 1)[0] for f in files]
 
-    return labels
+    steering = [float(label.split(" ")[0]) for label in labels]
+    throttle = [float(label.split(" ")[1]) for label in labels]
+
+    return steering, throttle
+
+def show_histogram(labels):
+    """
+    Muestra un histograma con la cantidad de imágenes por etiqueta.
+
+    :param labels: Lista con las etiquetas de las imágenes.
+    """
+
+    data = np.array(labels)
+    bins = np.linspace(-1, 1, 21)
+
+    frecuencia, bordes = np.histogram(data, bins=bins)
+
+    # Graficar el histograma
+    plt.hist(data, bins=bins, edgecolor='black')
+    plt.title("Distribución de frecuencias")
+    plt.xlabel("Valor")
+    plt.ylabel("Frecuencia")
+    plt.show()
 
 def get_labels_count(labels):
     """
@@ -219,40 +238,15 @@ def save_data(balanced_files, destination_path, source_path) -> None:
         
 start_time = time.time()
 
-files = get_data_info(data_path)
+files = get_data(data_path_source)
 sorted_files = sort_files(files)
-labels = get_data_labels(sorted_files)
+steering, throttle = get_data_labels(sorted_files)
 
-balanced_files = get_balanced_data(sorted_files, labels)
-balanced_labels = get_data_labels(balanced_files)
-
-labels_count = get_labels_count(labels)
-balanced_labels_count = get_labels_count(balanced_labels)
-
-labels_percentage = get_label_percentage(labels_count)
-balanced_labels_percentage = get_label_percentage(balanced_labels_count)
-
-weights = get_recomended_weights(labels_percentage)
-
-
-resize_images(files, data_path, data_path_destination, width=480, height=270, quality=70)
-
-print("Numero de etiquetas: \n", labels_count)
-#print("Numero de etiquetas balanceadas: \n", balanced_labels_count)
-
-print("porcentaje de etiquetas: \n", labels_percentage)
-#print("porcentaje de etiquetas balanceadas: \n",balanced_labels_percentage)
-
-print("Pesos recomendados: \n", weights)
-
-#print("Balanceando los datos...", end="\r")
-
-#save_data(balanced_files, data_path_destination, data_path)
-
-#print("Balance de datos completo. Datos balanceados guardados en la carpeta 'balanced_data'.")
+#show_histogram(throttle)
+show_histogram(throttle)
 
 end_time = time.time() - start_time  # Tiempo de finalización del epoch
-    # Convertir end_time a formato hh:mm:ss
+# Convertir end_time a formato hh:mm:ss
 end_time = time.strftime("%H:%M:%S", time.gmtime(end_time))
 
 print(f"Tiempo total: {end_time}")

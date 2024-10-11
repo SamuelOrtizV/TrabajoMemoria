@@ -5,7 +5,8 @@ import time
 import cv2
 from ScreenRecorder import capture_screen, show_screen_capture, preprocess_image
 from inputs.getkeys import key_check, id_to_key
-from inputs.DriveInputs import none, move_left, move_right, move_forward, move_back, move_left_forward, move_right_forward, move_left_back, move_right_back
+from inputs.DriveInputs import move
+from inputs.xbox_controller_emulator import XboxControllerEmulator
 from torchvision import transforms, models
 import time
 from model import SimpleRNN
@@ -14,46 +15,52 @@ from PIL import Image
 import threading
 import tkinter as tk
 
-MODEL_NAME = "Model-efficientnet_b0-5-224-256-epoch_2.pth"
+MODEL_NAME = "Model-efficientnet_b0-5-240-135-2-256-epoch_4.pth"
+#MODEL_NAME = "Oval_Model_4_EffNet_b0_CNNGRAD_256_epoch_11.pth"
 # Model name format: Model_{cnn_name}_{seq_len}_{input_size[0]}_{hidden_size}_epoch{epoch}.pth
+
+""" cnn_name = "efficientnet_b0"
+seq_len = 5
+input_size = (224, 224)
+hidden_size = 256 """
+
 
 cnn_name = MODEL_NAME.split("-")[1]
 seq_len = int(MODEL_NAME.split("-")[2])
-input_size = (int(MODEL_NAME.split("-")[3]), int(MODEL_NAME.split("-")[3]))
-hidden_size = int(MODEL_NAME.split("-")[4])
+input_size = (int(MODEL_NAME.split("-")[3]), int(MODEL_NAME.split("-")[4]))
+output_size = int(MODEL_NAME.split("-")[5])
+hidden_size = int(MODEL_NAME.split("-")[6])
 
 print("Modelo a cargar:", MODEL_NAME)
 print("CNN:", cnn_name)
 print("Seq_len:", seq_len)
 print("Input size:", input_size)
+print("Output size:", output_size)
 print("Hidden size:", hidden_size)
-
 
 # Definición de parámetros
 #pretrained_cnn = models.efficientnet_b0(weights='IMAGENET1K_V1') #models.efficientnet_v2_s(weights='IMAGENET1K_V1')
 #hidden_size = 256 # Número de neuronas en la capa oculta 512 usado por Iker
-output_size = 9 # Número de clases (W, A, S, D, WA, WD, SA, SD, NONE)
+# output_size = 9 # Número de clases (W, A, S, D, WA, WD, SA, SD, NONE)
+# seq_len = 5 # Número de imágenes a considerar en la secuencia
 num_layers = 1
 dropout = 0
 bias = True
 
-#seq_len = 5 # Número de imágenes a considerar en la secuencia
-
-
-
 # Definir las transformaciones
-""" transform = transforms.Compose([
-    transforms.Resize((224, 224)),  # Cambia el tamaño de las imágenes a (height x width)
+transform = transforms.Compose([
+    transforms.Resize((input_size)),  # Cambia el tamaño de las imágenes a (height x width)
     transforms.ToTensor(),         # Convierte las imágenes a tensores
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalizar la imagen
-]) """
+])
 
-transform = transforms.Compose([
+# ARREGLAR ESTO---------------------------------------------------------------------------------------------------------------------
+""" transform = transforms.Compose([
     transforms.Resize(input_size[0], interpolation=Image.BICUBIC),
     transforms.Pad((0, 0, 0, 0), fill=0, padding_mode='constant'),  # Rellenar para obtener el tamaño deseado
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+]) """
 
 # Variable global para controlar la interrupción del teclado
 stop_event = threading.Event()
@@ -77,11 +84,11 @@ def key_detection():
 
 def run_model(
         model_path: str,
-        width: int = 1600,
-        height: int = 900,
-        full_screen: bool = False,
+        width: int = 1920,
+        height: int = 1080,
+        full_screen: bool = True,
         show_screen_capture: bool = False,
-        max_fps: int = 5,
+        max_fps: int = 10,
         
 ) -> None:
     # Crear la ventana de estado
@@ -116,10 +123,20 @@ def run_model(
     model.eval()
     model.to(device)
 
+    if output_size == 9:
+        print("Modelo de teclado cargado.")
+    elif output_size == 2:
+        controller = XboxControllerEmulator()
+        print("Modelo de controlador cargado.")
+    else:
+        raise ValueError("El tamaño de salida del modelo debe ser 2 (control) o 9 (teclado).")
+
 
     # Iniciar el hilo de detección de teclas
     key_thread = threading.Thread(target=key_detection)
     key_thread.start()
+
+    dots = ["   ", ".  ", ".. ", "...", " ..", "  ."]
 
     # Bucle principal
     sequence_buffer = []
@@ -133,13 +150,15 @@ def run_model(
                 var.set("CONTROL HUMANO")
                 text_label.config(fg="red")
                 root.update()
-                print("Modelo pausado. Presione 'P' para reanudar.             ", end="\r")
+                if output_size == 2:
+                    controller.reset()
+                print("Modelo pausado. Presione 'P' para reanudar.                                                                  ", end="\r")
                 time.sleep(0.1)
                 continue
             else:
                 var.set("CONTROL DE IA")
                 text_label.config(fg="green")
-                root.update()
+                #root.update()
 
             img = capture_screen(region)        
             #preprocessed_img = preprocess_image(img, WIDTH, HEIGHT) # CREO QUE ESTA LINEA ES INNECESARIA
@@ -163,74 +182,37 @@ def run_model(
                 #print("Tamaño secuence tensor", sequence_tensor.size())
                 #print(type(sequence_tensor))
 
-                # Asegurarse de que el tensor tiene la forma correcta [batch_size, seq_len, channels, height, width]
-                if sequence_tensor.ndim == 4:
-                    sequence_tensor = sequence_tensor.unsqueeze(2)  # Añadir dimensión de canales
-                    print("WARNING: Se ha añadido una dimensión de canales al tensor de entrada.")
-
+                moving_dots = dots[cont % len(dots)]
 
                 # Habilitar precisión mixta
                 with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
                     output = model(sequence_tensor)
 
-                # Obtener la predicción del modelo
-                prediction = torch.argmax(output, dim=1).item()
+                if output_size == 9: # Caso de teclado, discreto. Se usa argmax
+                    # Obtener la predicción del modelo
+                    prediction = torch.argmax(output, dim=1).item()
 
-                if cont == 0:
-                    moving_dots = "   "
-                elif cont == 1:
-                    moving_dots = ".  "
-                elif cont == 2:
-                    moving_dots = ".. "
-                elif cont == 3:
-                    moving_dots = "..."
-                elif cont == 4:
-                    moving_dots = " .."
-                elif cont == 5:
-                    moving_dots = "  ."
+                    # Mover el vehículo
+                    move(prediction)
+                    print(f"{moving_dots} Modelo funcionando! Predicción del modelo: {id_to_key(prediction)}", end="\r")
 
-
-                print(f"{moving_dots} Modelo funcionando! Predicción del modelo: {id_to_key(prediction)}", end="\r")
-                
+                elif output_size == 2: # Caso de controlador, continuo. Se usa el valor directamente
+                    # Obtener la predicción del modelo
+                    prediction = torch.clamp(output, min=-1.0, max=1.0).tolist()[0] # Limitar los valores entre -1.0 y 1.0                                     
+                    controller.steering(prediction[0])
+                    controller.throttle_break(prediction[1])
+                    print(f"{moving_dots} Modelo funcionando! Predicción del modelo: Steering {prediction[0]:.2f} Throttle {prediction[1]:.2f}", end="\r")       
 
                 cont += 1
-
                 if cont > 5:
                     cont = 0
-                if prediction == 0:
-                    none()
-                elif prediction == 1:
-                    move_left()
-                elif prediction == 2:
-                    move_right()
-                elif prediction == 3:
-                    move_forward()
-                elif prediction == 4:
-                    move_back()
-                elif prediction == 5:
-                    move_left_forward()
-                elif prediction == 6:
-                    move_right_forward()
-                elif prediction == 7:
-                    move_left_back()
-                elif prediction == 8:
-                    move_right_back()
 
-            #keys = key_check()
-
-            """ if keys == "Q":
-                raise KeyboardInterrupt
-            elif keys == "P":
-                print("Se ha pausado el modelo. Presione 'P' nuevamente para reanudar.", end="\r")
-                while key_check() != "P":
-                    time.sleep(0.1)
-                time.sleep(1)
-                print("                                                                                            ", end="\r")
-            """
             """ if show_screen_capture:
                 cv2.imshow("Screen Capture", img)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break """
+            root.update_idletasks()
+            root.update()
 
             elapsed_time = time.time() - start_time
             if elapsed_time < 1 / max_fps:
@@ -239,10 +221,16 @@ def run_model(
         except KeyboardInterrupt:
             stop_event.set()
             print("\nInterrupción de teclado")
+        except ValueError as e:
+            stop_event.set()
+            print(f"Error: {str(e)}")
         
     
-    print("\nSaliendo del modelo...")
+    print("\nSaliendo del modelo...")   
+    if output_size == 2:
+        controller.reset()
     key_thread.join()
+    root.quit()
     root.destroy()
 
 if __name__ == "__main__":
@@ -254,7 +242,7 @@ if __name__ == "__main__":
     parser.add_argument("--height", type=int, default=1080, help="Alto de la región de captura.")
     parser.add_argument("--full_screen", type=bool, default=True, help="Capturar pantalla completa.")
     parser.add_argument("--show_screen_capture", type=bool, default=False, help="Mostrar captura de pantalla.")
-    parser.add_argument("--max_fps", type=int, default=5, help="Máximo número de fotogramas por segundo.")
+    parser.add_argument("--max_fps", type=int, default=10, help="Número de fotogramas por segundo.")
     
 
     args = parser.parse_args()

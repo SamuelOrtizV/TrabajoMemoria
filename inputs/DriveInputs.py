@@ -2,7 +2,7 @@ from .game_control import PressKey, ReleaseKey, W, A, S, D
 import time
 
 # Tiempo de espera entre acciones de virar. Mayores tiempos provocan giros más pronunciados y viceversa.
-SLEEP_TIME = 0.19 # Debe ser menor que 1/FPS
+SLEEP_TIME = 0.09 # Debe ser menor que 1/FPS
 
 # Definición de las decisiones posibles
 
@@ -106,3 +106,30 @@ def move_right_back():
     time.sleep(SLEEP_TIME)
     ReleaseKey(D)
     ReleaseKey(S)
+
+def move(direction: int):
+    """
+    Mueve el vehículo en la dirección especificada.
+
+    :param int direction: La dirección en la que se moverá el vehículo.
+    """
+    if direction == 0:
+        none()
+    elif direction == 1:
+        move_left()
+    elif direction == 2:
+        move_right()
+    elif direction == 3:
+        move_forward()
+    elif direction == 4:
+        move_back()
+    elif direction == 5:
+        move_left_forward()
+    elif direction == 6:
+        move_left_back()        
+    elif direction == 7:
+        move_right_forward()        
+    elif direction == 8:
+        move_right_back()
+    else:
+        raise ValueError("La dirección debe estar entre 0 y 8")
