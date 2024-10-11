@@ -9,7 +9,7 @@ from inputs.getkeys import id_to_key
 from PIL import Image
 import io
 
-data_path_source = "./datasets/Old dataset/raw5fps"
+data_path_source = "./datasets/validation"
 data_path_destination = "./datasets/output_data"
 
 if not os.path.exists(data_path_destination):
@@ -48,14 +48,24 @@ def get_data_label(file):
     :param files: Lista con la información de las imágenes.
     :return: Lista con las etiquetas de las imágenes.
     """
-    """ labels = [f.split("_")[1].rsplit('.', 1)[0] for f in files]
-
-    steering = [float(label.split(" ")[0]) for label in labels]
-    throttle = [float(label.split(" ")[1]) for label in labels] """
     label = file.split("_")[1].rsplit('.', 1)[0]
 
     steering = float(label.split(" ")[0])
     throttle = float(label.split(" ")[1])
+
+    return steering, throttle
+
+def get_data_labels(files):
+    """
+    Obtiene las etiquetas de las imágenes guardadas en una carpeta.
+
+    :param files: Lista con la información de las imágenes.
+    :return: Lista con las etiquetas de las imágenes.
+    """
+    labels = [f.split("_")[1].rsplit('.', 1)[0] for f in files]
+
+    steering = [float(label.split(" ")[0]) for label in labels]
+    throttle = [float(label.split(" ")[1]) for label in labels]
 
     return steering, throttle
 
@@ -261,17 +271,18 @@ def save_data(files, destination_path, source_path) -> None:
         cv2.imwrite(destination, img)
 
         
-""" start_time = time.time()
+start_time = time.time()
 
 files = get_data(data_path_source)
 sorted_files = sort_files(files)
+    
 steering, throttle = get_data_labels(sorted_files)
 
 #show_histogram(throttle)
-show_histogram(throttle)
+show_histogram(steering)
 
 end_time = time.time() - start_time  # Tiempo de finalización del epoch
 # Convertir end_time a formato hh:mm:ss
 end_time = time.strftime("%H:%M:%S", time.gmtime(end_time))
 
-print(f"Tiempo total: {end_time}") """
+print(f"Tiempo total: {end_time}")

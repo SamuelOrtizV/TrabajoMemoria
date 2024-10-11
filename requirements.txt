@@ -1,0 +1,15 @@
+ipython==8.12.3
+matplotlib==3.9.2
+mss==3.0.1
+numpy==2.1.2
+opencv_python==4.9.0.80
+pandas==2.2.3
+Pillow==10.4.0
+pygame==2.5.2
+pynput==1.7.7
+pywin32==306
+pyxinput==0.9.0
+Requests==2.32.3
+torch==2.4.1+cu124
+torchvision==0.19.1+cu124
+vgamepad==0.1.0
