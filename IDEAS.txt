@@ -2,13 +2,9 @@ Probar el modelo desde lo más basíco e ir descartando problemas.
 
 Reunir datos en una pista simple y una vez funcione implementar otras más complejas
 
-CNN + LSTM+ STATE
-
 Color Jitter
 
 Images dropout
-
-Nombre trained models: Model_{cnn_name}_{seq_len}_{input_size}_{RNN_size}_epoch{epoch}.pth
 
 LR que decaiga con el tiempo
 
@@ -21,3 +17,5 @@ Establecer un tiempo de vision, 1,5s?
 Ver que tanto afecta la longitud de la secuencia, un paper ucupo casi 23 por segundo
 
 Programa que genere automaticamente los conjuntos de entrenamiento, validacion y prueba
+
+AVERIGUAR CUÁNTOS PARÁMETROS TIENE EL MODELO

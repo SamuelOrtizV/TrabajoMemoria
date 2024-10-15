@@ -9,7 +9,7 @@ from inputs.getkeys import id_to_key
 from PIL import Image
 import io
 
-data_path_source = "./datasets/validation"
+data_path_source = "./datasets/train"
 data_path_destination = "./datasets/output_data"
 
 if not os.path.exists(data_path_destination):
@@ -278,7 +278,7 @@ sorted_files = sort_files(files)
     
 steering, throttle = get_data_labels(sorted_files)
 
-#show_histogram(throttle)
+show_histogram(throttle)
 show_histogram(steering)
 
 end_time = time.time() - start_time  # Tiempo de finalización del epoch

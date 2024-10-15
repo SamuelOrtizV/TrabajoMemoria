@@ -9,14 +9,14 @@ from inputs.DriveInputs import move
 from inputs.xbox_controller_emulator import XboxControllerEmulator
 from torchvision import transforms, models
 import time
-from model import SimpleRNN
+from model import CNN_RNN, CNN_LSTM_STATE
 import torch
 from PIL import Image
 import threading
 import tkinter as tk
 
-MODEL_NAME = "Model-efficientnet_b0-5-240-135-2-256-epoch_4.pth"
-#MODEL_NAME = "Oval_Model_4_EffNet_b0_CNNGRAD_256_epoch_11.pth"
+MODEL_NAME = "SpeedTest1-CNN_LSTM_STATE-efficientnet_b0-5-240-135-2-256-epoch_7"+".pth"
+
 # Model name format: Model_{cnn_name}_{seq_len}_{input_size[0]}_{hidden_size}_epoch{epoch}.pth
 
 """ cnn_name = "efficientnet_b0"
@@ -24,25 +24,23 @@ seq_len = 5
 input_size = (224, 224)
 hidden_size = 256 """
 
+# Definición de parámetros
 
-cnn_name = MODEL_NAME.split("-")[1]
-seq_len = int(MODEL_NAME.split("-")[2])
-input_size = (int(MODEL_NAME.split("-")[3]), int(MODEL_NAME.split("-")[4]))
-output_size = int(MODEL_NAME.split("-")[5])
-hidden_size = int(MODEL_NAME.split("-")[6])
+architecture = MODEL_NAME.split("-")[1]
+cnn_name = MODEL_NAME.split("-")[2]
+seq_len = int(MODEL_NAME.split("-")[3])
+input_size = (int(MODEL_NAME.split("-")[4]), int(MODEL_NAME.split("-")[5]))
+output_size = int(MODEL_NAME.split("-")[6])
+hidden_size = int(MODEL_NAME.split("-")[7])
 
 print("Modelo a cargar:", MODEL_NAME)
+print("Arquitectura:", architecture)
 print("CNN:", cnn_name)
 print("Seq_len:", seq_len)
 print("Input size:", input_size)
 print("Output size:", output_size)
 print("Hidden size:", hidden_size)
 
-# Definición de parámetros
-#pretrained_cnn = models.efficientnet_b0(weights='IMAGENET1K_V1') #models.efficientnet_v2_s(weights='IMAGENET1K_V1')
-#hidden_size = 256 # Número de neuronas en la capa oculta 512 usado por Iker
-# output_size = 9 # Número de clases (W, A, S, D, WA, WD, SA, SD, NONE)
-# seq_len = 5 # Número de imágenes a considerar en la secuencia
 num_layers = 1
 dropout = 0
 bias = True
@@ -54,13 +52,14 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalizar la imagen
 ])
 
-# ARREGLAR ESTO---------------------------------------------------------------------------------------------------------------------
-""" transform = transforms.Compose([
-    transforms.Resize(input_size[0], interpolation=Image.BICUBIC),
-    transforms.Pad((0, 0, 0, 0), fill=0, padding_mode='constant'),  # Rellenar para obtener el tamaño deseado
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-]) """
+if output_size == 9:
+    print("Modelo de teclado cargado.")
+elif output_size == 2:
+    controller = XboxControllerEmulator()
+    print("Modelo de controlador cargado.")
+else:
+    raise ValueError("El tamaño de salida del modelo debe ser 2 (control) o 9 (teclado).")
+
 
 # Variable global para controlar la interrupción del teclado
 stop_event = threading.Event()
@@ -80,6 +79,11 @@ def key_detection():
                 print("                                                                                            ", end="\r")
                 pause_event.set()
             time.sleep(1)  # Evitar múltiples detecciones rápidas
+        elif keys == "W":
+            if output_size == 2:
+                controller.throttle_break(1.0)
+                time.sleep(0.5)
+                controller.reset()
             
 
 def run_model(
@@ -98,11 +102,11 @@ def run_model(
     text_label = tk.Label(root, textvariable=var, fg="green", font=("Impact", 44))
     text_label.pack()
     
-    # print countdown 5 seconds
+    """ # print countdown 5 seconds
     for i in list(range(5))[::-1]:
         print(i + 1)
         time.sleep(1)
-
+ """
     print("Comenzando a ejecutar el modelo. Presione P para pausarlo o Q para salir...")
 
      # Define la región de captura (x, y, width, height)
@@ -117,20 +121,20 @@ def run_model(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Usando", "cuda" if torch.cuda.is_available() else "cpu", "como dispositivo.\n\n\n\n\n")
 
-    model = SimpleRNN(cnn_name = cnn_name, hidden_size = hidden_size, output_size = output_size,
-                       input_size = (3, *input_size), num_layers = num_layers, dropout = dropout, bias = bias)
+    if architecture == "CNN_RNN":
+        model = CNN_RNN(cnn_name = cnn_name, hidden_size = hidden_size, output_size = output_size,
+                        input_size = (3, *input_size), num_layers = num_layers, dropout = dropout, bias = bias)
+    elif architecture == "CNN_LSTM_STATE":
+        model = CNN_LSTM_STATE(cnn_name = cnn_name, hidden_size = hidden_size, output_size = output_size,
+                        input_size = (3, *input_size), num_layers = num_layers, dropout = dropout, bias = bias)
+        hidden_state = model.init_hidden(1)  # Inicializar el hidden state con batch size = 1
+        hidden_state = (hidden_state[0].to(device), hidden_state[1].to(device))  # Mover hidden_state al dispositivo
+    else:
+        raise ValueError("La arquitectura del modelo debe ser CNN_RNN o CNN_LSTM_STATE.")
+
     model.load_state_dict(torch.load(model_path, weights_only=True))
     model.eval()
     model.to(device)
-
-    if output_size == 9:
-        print("Modelo de teclado cargado.")
-    elif output_size == 2:
-        controller = XboxControllerEmulator()
-        print("Modelo de controlador cargado.")
-    else:
-        raise ValueError("El tamaño de salida del modelo debe ser 2 (control) o 9 (teclado).")
-
 
     # Iniciar el hilo de detección de teclas
     key_thread = threading.Thread(target=key_detection)
@@ -138,16 +142,21 @@ def run_model(
 
     dots = ["   ", ".  ", ".. ", "...", " ..", "  ."]
 
-    # Bucle principal
+    negative_throttle_time = 0
+    invert_start_time = None
+    invert_duration = 3  # Duración de la inversión en segundos
+    stop_break_threshold = 5  # Tiempo en segundos para dejar de detener el vehículo
+
     sequence_buffer = []
     cont = 0
+    # Bucle principal
     while not stop_event.is_set():
         try:                
             start_time = time.time()
 
             # Pausar el bucle si pause_event está establecido
             if pause_event.is_set():
-                var.set("CONTROL HUMANO")
+                var.set("IA EN PAUSA")
                 text_label.config(fg="red")
                 root.update()
                 if output_size == 2:
@@ -156,7 +165,7 @@ def run_model(
                 time.sleep(0.1)
                 continue
             else:
-                var.set("CONTROL DE IA")
+                var.set("IA FUNCIONANDO")
                 text_label.config(fg="green")
                 #root.update()
 
@@ -177,8 +186,11 @@ def run_model(
             # Verificar si tenemos suficientes imágenes para una secuencia completa
             if len(sequence_buffer) == seq_len:
                 # Convertir el buffer de secuencia a un numpy.ndarray y luego a un tensor de PyTorch
-                sequence_array = np.array(sequence_buffer)
-                sequence_tensor = torch.tensor(sequence_array, dtype=torch.float32).unsqueeze(0).to('cuda') # NO SE SI CONVERTIR DE NUEVO A TENSOR
+                #sequence_array = np.array(sequence_buffer)
+                #sequence_tensor = torch.tensor(sequence_array, dtype=torch.float32).unsqueeze(0).to('cuda') # NO SE SI CONVERTIR DE NUEVO A TENSOR
+
+                sequence_tensor = torch.stack(sequence_buffer).unsqueeze(0).to(device)
+
                 #print("Tamaño secuence tensor", sequence_tensor.size())
                 #print(type(sequence_tensor))
 
@@ -186,7 +198,13 @@ def run_model(
 
                 # Habilitar precisión mixta
                 with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
-                    output = model(sequence_tensor)
+                    if architecture == "CNN_LSTM_STATE":
+                        # Pasar el hidden_state y obtener la predicción y el nuevo hidden_state
+                        output, hidden_state = model(sequence_tensor, hidden_state)
+                        # Desconectar el hidden_state para evitar acumulación de gradientes
+                        hidden_state = (hidden_state[0].detach(), hidden_state[1].detach())
+                    elif architecture == "CNN_RNN":
+                        output = model(sequence_tensor)
 
                 if output_size == 9: # Caso de teclado, discreto. Se usa argmax
                     # Obtener la predicción del modelo
@@ -196,9 +214,23 @@ def run_model(
                     move(prediction)
                     print(f"{moving_dots} Modelo funcionando! Predicción del modelo: {id_to_key(prediction)}", end="\r")
 
-                elif output_size == 2: # Caso de controlador, continuo. Se usa el valor directamente
-                    # Obtener la predicción del modelo
-                    prediction = torch.clamp(output, min=-1.0, max=1.0).tolist()[0] # Limitar los valores entre -1.0 y 1.0                                     
+                elif output_size == 2: # Caso de control, continuo. Se usa el valor directamente
+                    prediction = torch.clamp(output, min=-1.0, max=1.0).tolist()[0] # Limitar los valores entre -1.0 y 1.0
+
+                    if prediction[1] < 0:
+                        negative_throttle_time += time.time() - start_time
+                    else:
+                        negative_throttle_time = 0
+
+                    if negative_throttle_time > stop_break_threshold:
+                        if invert_start_time is None:
+                            invert_start_time = time.time()
+                        if time.time() - invert_start_time < invert_duration:
+                            prediction[1] = 1.0
+                        else:
+                            invert_start_time = None
+                            negative_throttle_time = 0
+
                     controller.steering(prediction[0])
                     controller.throttle_break(prediction[1])
                     print(f"{moving_dots} Modelo funcionando! Predicción del modelo: Steering {prediction[0]:.2f} Throttle {prediction[1]:.2f}", end="\r")       
@@ -225,7 +257,6 @@ def run_model(
             stop_event.set()
             print(f"Error: {str(e)}")
         
-    
     print("\nSaliendo del modelo...")   
     if output_size == 2:
         controller.reset()
@@ -235,7 +266,6 @@ def run_model(
 
 if __name__ == "__main__":
 
-    # Configurar argumentos
     parser = argparse.ArgumentParser(description="Ejecutar el modelo de conducción autónoma.")
     parser.add_argument("--model_path", type=str, default=fr"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\{MODEL_NAME}", help="Ruta del modelo entrenado.")
     parser.add_argument("--width", type=int, default=1920, help="Ancho de la región de captura.")
@@ -244,7 +274,6 @@ if __name__ == "__main__":
     parser.add_argument("--show_screen_capture", type=bool, default=False, help="Mostrar captura de pantalla.")
     parser.add_argument("--max_fps", type=int, default=10, help="Número de fotogramas por segundo.")
     
-
     args = parser.parse_args()
 
     print("Iniciando...")
@@ -257,4 +286,3 @@ if __name__ == "__main__":
         show_screen_capture=args.show_screen_capture,
         max_fps=args.max_fps       
     )
-
