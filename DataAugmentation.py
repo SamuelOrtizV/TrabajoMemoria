@@ -8,8 +8,8 @@ import cv2
 import os
 import time
 
-source_path = "./datasets/collected_images"
-destination_path = "./datasets/collected_images"
+source_path = "./datasets/silverstone67"
+destination_path = "./datasets/silverstone67_5"
 
 if not os.path.exists(destination_path):
     os.makedirs(destination_path)

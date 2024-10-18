@@ -12,7 +12,7 @@ width = 1920
 height = 1080
 full_screen = True
 max_fps = 10
-data_path = "./datasets/raw"
+data_path = "./datasets/silverstone67"
 
 # Define the size of the recorded images
 WIDTH = 480
@@ -153,6 +153,8 @@ def data_collector(
     # Iniciar el hilo de detección de teclas
     key_thread = threading.Thread(target=key_detection)
     key_thread.start()
+
+    pause_event.set()
 
     # Bucle principal
     while not stop_event.is_set():

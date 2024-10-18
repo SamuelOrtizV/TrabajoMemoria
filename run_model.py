@@ -15,9 +15,9 @@ from PIL import Image
 import threading
 import tkinter as tk
 
-MODEL_NAME = "SpeedTest1-CNN_LSTM_STATE-efficientnet_b0-5-240-135-2-256-epoch_7"+".pth"
+MODEL_NAME = "mini-CNN_LSTM_STATE-efficientnet_b0-20-240-135-2-256-epoch_1"+".pth"
 
-# Model name format: Model_{cnn_name}_{seq_len}_{input_size[0]}_{hidden_size}_epoch{epoch}.pth
+# Model name format: {name}_{architecture}-{cnn_name}-{seq_len}-{input_size[0]}-{input_size[1]}-{hidden_size}-epoch_{epoch}.pth
 
 """ cnn_name = "efficientnet_b0"
 seq_len = 5
@@ -25,7 +25,7 @@ input_size = (224, 224)
 hidden_size = 256 """
 
 # Definición de parámetros
-
+name = MODEL_NAME.split("-")[0]
 architecture = MODEL_NAME.split("-")[1]
 cnn_name = MODEL_NAME.split("-")[2]
 seq_len = int(MODEL_NAME.split("-")[3])
@@ -34,6 +34,7 @@ output_size = int(MODEL_NAME.split("-")[6])
 hidden_size = int(MODEL_NAME.split("-")[7])
 
 print("Modelo a cargar:", MODEL_NAME)
+print("Nombre:", name)
 print("Arquitectura:", architecture)
 print("CNN:", cnn_name)
 print("Seq_len:", seq_len)
@@ -102,11 +103,6 @@ def run_model(
     text_label = tk.Label(root, textvariable=var, fg="green", font=("Impact", 44))
     text_label.pack()
     
-    """ # print countdown 5 seconds
-    for i in list(range(5))[::-1]:
-        print(i + 1)
-        time.sleep(1)
- """
     print("Comenzando a ejecutar el modelo. Presione P para pausarlo o Q para salir...")
 
      # Define la región de captura (x, y, width, height)
@@ -267,7 +263,7 @@ def run_model(
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Ejecutar el modelo de conducción autónoma.")
-    parser.add_argument("--model_path", type=str, default=fr"C:\Users\PC\Documents\GitHub\TrabajoMemoria\trained_models\{MODEL_NAME}", help="Ruta del modelo entrenado.")
+    parser.add_argument("--model_path", type=str, default=f"./trained_models/{name}/{MODEL_NAME}", help="Ruta del modelo entrenado.")
     parser.add_argument("--width", type=int, default=1920, help="Ancho de la región de captura.")
     parser.add_argument("--height", type=int, default=1080, help="Alto de la región de captura.")
     parser.add_argument("--full_screen", type=bool, default=True, help="Capturar pantalla completa.")

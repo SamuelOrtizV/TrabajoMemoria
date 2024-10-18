@@ -32,6 +32,7 @@ class XboxControllerReader:
             logging.warning(
                 "No se encontró un controlador. Asegúrate de que el controlador esté conectado y sea reconocido por Windows."
             )
+            time.sleep(4)
             sys.exit()
 
         # Obtiene el nombre y el ID del controlador

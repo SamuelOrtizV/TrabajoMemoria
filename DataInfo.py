@@ -9,7 +9,7 @@ from inputs.getkeys import id_to_key
 from PIL import Image
 import io
 
-data_path_source = "./datasets/train"
+data_path_source = "./datasets/test3"
 data_path_destination = "./datasets/output_data"
 
 if not os.path.exists(data_path_destination):
@@ -271,7 +271,7 @@ def save_data(files, destination_path, source_path) -> None:
         cv2.imwrite(destination, img)
 
         
-start_time = time.time()
+""" start_time = time.time()
 
 files = get_data(data_path_source)
 sorted_files = sort_files(files)
@@ -285,4 +285,4 @@ end_time = time.time() - start_time  # Tiempo de finalización del epoch
 # Convertir end_time a formato hh:mm:ss
 end_time = time.strftime("%H:%M:%S", time.gmtime(end_time))
 
-print(f"Tiempo total: {end_time}")
+print(f"Tiempo total: {end_time}") """
