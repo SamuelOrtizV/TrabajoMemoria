@@ -15,7 +15,7 @@ from PIL import Image
 import threading
 import tkinter as tk
 
-MODEL_NAME = "mini-CNN_LSTM_STATE-efficientnet_b0-20-240-135-2-256-epoch_1"+".pth"
+MODEL_NAME = "SilverStone67NG-CNN_LSTM_STATE-efficientnet_b0-20-240-135-2-256-epoch_1"+".pth"
 
 # Model name format: {name}_{architecture}-{cnn_name}-{seq_len}-{input_size[0]}-{input_size[1]}-{hidden_size}-epoch_{epoch}.pth
 

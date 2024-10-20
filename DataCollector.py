@@ -12,7 +12,7 @@ width = 1920
 height = 1080
 full_screen = True
 max_fps = 10
-data_path = "./datasets/silverstone67"
+data_path = "./datasets/silverstone67_val"
 
 # Define the size of the recorded images
 WIDTH = 480

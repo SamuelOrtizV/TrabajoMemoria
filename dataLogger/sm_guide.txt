@@ -1,0 +1,3 @@
+https://www.assettocorsa.net/forum/index.php?threads/shared-memory-for-python-applications-sim_info-py-for-ac-v0-22.11382/
+
+https://github.com/ckendell/ACAppTutorial/blob/master/ACAppTutorial.md
