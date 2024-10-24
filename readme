@@ -1,3 +1,8 @@
+El presente proyecto busca lograr un agente que usando la vision de la pantalla sea capaz de manejar un auto en un entorno de simulación de carreras. Se espera que el sistema sea capaz de identificar patrones en las imagenes teniendo una CNN como entrada y que en base a ello pueda tomar deciciones sobre qué controles tomar, controles que serán enviados a un control de xbox 360 virtual.
+
+En esta rama se explorará la alternativa de emplear aprendizaje por refuerzo para entrenar al agente, en concreto usando el modelo Soft Actor Critic, donde las recompensas se daran en base a los siguientes parámetros: Velocidad debe ser mayor a 0, posición normalizada de la pista (checkpoints), ruedas fuera de la pista y daño del carro. (estas 2 últimas penalizaran al agente, si pasa x tiempo con las 4 rudas fuera de la pista, se reiniciará la carrera, si daño>0 se reiniciará también).
+
+
 DataCollector
 
 Para ejecutar el colector de datos abrir start_data_collector.bat

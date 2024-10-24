@@ -14,8 +14,13 @@ Establecer una resolucion para el entrenamiento -> (480 x 270) o (240 x 135)
 
 Establecer un tiempo de vision, 1,5s?
 
+    Establecer que los ultimos frames capturen por ejemplo el ultimo segundo de trayecto, pero no tomar frames cada 200ms sino que todo lo rapido que se pueda y que cada frame 
+    tome los 5 frames anteriores separados por 200ms
+
 Ver que tanto afecta la longitud de la secuencia, un paper ucupo casi 23 por segundo
 
-Programa que genere automaticamente los conjuntos de entrenamiento, validacion y prueba
+CNN solo es casi 4 veces más rapida que CNN_RNN Entrenando al maximo de lo que da mi gpu
 
 AVERIGUAR CUÁNTOS PARÁMETROS TIENE EL MODELO
+
+Ver si usar una neurona para aceleracion y freno o si usar 2 independientes
