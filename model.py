@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torchvision import transforms
 import os
@@ -81,10 +82,9 @@ class CNN(nn.Module):
         dropout (float, optional): Probabilidad de dropout.
         bias (bool, optional): Si se incluye sesgo en las capas lineales.
     """
-    def __init__(self, cnn_name, output_size, input_size=(3, 224, 224), dropout=0, bias=True, cnn_train=True):
+    def __init__(self, cnn_name, input_size=(3, 224, 224), dropout=0, bias=True, cnn_train=True):
         super(CNN, self).__init__()
         self.cnn_name = cnn_name
-        self.output_size = output_size
         self.input_size = input_size
         self.dropout = dropout
         self.bias = bias
@@ -99,11 +99,6 @@ class CNN(nn.Module):
             for param in self.cnn.parameters():  # Desactivar el gradiente para las capas convolucionales preentrenadas
                 param.requires_grad = False
         
-        # Obtener el tamaño de la salida de la CNN
-        conv_output_size = self._get_conv_output_size()
-        
-        # Definir la capa totalmente conectada
-        self.fc = nn.Linear(conv_output_size, output_size, bias=bias)
         if dropout > 0:
             self.dropout_layer = nn.Dropout(dropout)
         else:
@@ -113,7 +108,7 @@ class CNN(nn.Module):
         # Obtener la clase de la CNN
         cnn_call_method = getattr(models, self.cnn_name)
         # Instanciar el modelo
-        cnn_model = cnn_call_method(weights='IMAGENET1K_V1')        
+        cnn_model = cnn_call_method(weights='IMAGENET1K_V1')      
 
         return cnn_model
     
@@ -133,7 +128,7 @@ class CNN(nn.Module):
         if self.dropout_layer:
             cnn_output = self.dropout_layer(cnn_output)
         
-        final_out = self.fc(cnn_output.view(batch_size, -1))
+        final_out = cnn_output.view(batch_size, -1)
         return final_out
 
 class CNN_RNN(nn.Module):
@@ -285,3 +280,49 @@ class CNN_LSTM_STATE(nn.Module):
         weight = next(self.parameters()).data
         return (weight.new(self.num_layers, batch_size, self.hidden_size).zero_().to(weight.device),
                 weight.new(self.num_layers, batch_size, self.hidden_size).zero_().to(weight.device))
+    
+
+# Definir las redes del actor y crítico
+class Actor(nn.Module):
+    def __init__(self, cnn_name, output_size, input_size=(3, 224, 224), dropout=0, bias=True, cnn_train=True):
+        super(Actor, self).__init__()
+        self.cnn = CNN(cnn_name, input_size, dropout, bias, cnn_train)
+        conv_output_size = self.cnn._get_conv_output_size()
+        self.fc1 = nn.Linear(conv_output_size, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, output_size)
+    
+    def forward(self, x):
+        x = self.cnn(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return torch.tanh(self.fc3(x))
+
+class Critic(nn.Module):
+    def __init__(self, cnn_name, output_size, input_size=(3, 224, 224), dropout=0, bias=True, cnn_train=True):
+        super(Critic, self).__init__()
+        self.cnn = CNN(cnn_name, input_size, dropout, bias, cnn_train)
+        conv_output_size = self.cnn._get_conv_output_size()
+        self.fc1 = nn.Linear(conv_output_size + output_size, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 1)
+    
+    def forward(self, state, action):
+        state_features = self.cnn(state)
+        x = torch.cat([state_features, action], dim=-1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return self.fc3(x)
+
+def selected_model(architecture, cnn_name, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True, cnn_train=True):
+    if architecture == "CNN":
+        model = CNN(cnn_name, (3, *input_size), dropout, bias, cnn_train)
+    elif architecture == "CNN_RNN":
+        model = CNN_RNN(cnn_name, hidden_size, output_size, (3, *input_size), num_layers, dropout, bias)
+        
+        """elif architecture == "CNN_LSTM_STATE":
+        model = CNN_LSTM_STATE(cnn_name, hidden_size, output_size, (3, *input_size), num_layers, dropout, bias)
+        hidden_state = model.init_hidden(batch_size) """
+    else:
+        raise ValueError("La arquitectura seleccionada no es válida.")
+    return model

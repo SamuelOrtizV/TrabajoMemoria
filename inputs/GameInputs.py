@@ -1,8 +1,30 @@
-from .game_control import PressKey, ReleaseKey, W, A, S, D
+from .game_control import PressKey, ReleaseKey, W, A, S, D, CTRL, N, Y
 import time
 
 # Tiempo de espera entre acciones de virar. Mayores tiempos provocan giros más pronunciados y viceversa.
 SLEEP_TIME = 0.09 # Debe ser menor que 1/FPS
+
+def reset_environment():
+    """Reinicia la simulación (puedes personalizar este método según el juego)"""
+    # Lógica para reiniciar el entorno
+
+    # PRESIONAR CTRL + N PARA REINICIAR EL ENTORNO
+    PressKey(CTRL)
+    PressKey(N)
+    time.sleep(0.1)  # Esperar un poco para asegurar que se presionen las teclas
+    ReleaseKey(N)
+    ReleaseKey(CTRL)
+
+    time.sleep(2)  # Esperar a que el entorno se reinicie
+
+    # PRESIONAR CTRL + Y PARA INICIAR LA CARRERA
+    PressKey(CTRL)
+    PressKey(Y)
+    time.sleep(0.1)  # Esperar un poco para asegurar que se presionen las teclas
+    ReleaseKey(Y)
+    ReleaseKey(CTRL)
+
+    pass
 
 # Definición de las decisiones posibles
 

@@ -16,7 +16,15 @@ def show_screen_capture(img):
     if cv2.waitKey(1) & 0xFF == ord('q'):
         cv2.destroyAllWindows()
         return True
+
+def get_region(screen_size, full_screen):
     
+    if full_screen:
+        region = {'left': 0, 'top': 0, 'width': screen_size[0], 'height': screen_size[1]}
+    else:
+        region = {'left': 0, 'top': 40, 'width': screen_size[0], 'height': screen_size[1]}
+
+    return region
 
 def preprocess_image(img, width, height):
     """

@@ -5,7 +5,7 @@ import time
 import cv2
 from ScreenRecorder import capture_screen, show_screen_capture, preprocess_image
 from inputs.getkeys import key_check, id_to_key
-from inputs.DriveInputs import move
+from inputs.GameInputs import move
 from inputs.xbox_controller_emulator import XboxControllerEmulator
 from torchvision import transforms, models
 import time

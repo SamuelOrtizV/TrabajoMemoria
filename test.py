@@ -1,7 +1,11 @@
-import numpy as np
+from inputs.GameInputs import reset_environment, move_forward, move_back
+import time
 
-def check_numpy_version():
-    print("Versión de NumPy:", np.__version__)
-
-if __name__ == "__main__":
-    check_numpy_version()
+try:
+    while True:
+        reset_environment()
+        move_forward()
+        time.sleep(10)
+        move_back()
+except KeyboardInterrupt:
+    print("Exiting...")
