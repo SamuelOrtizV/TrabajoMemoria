@@ -20,8 +20,8 @@ class XboxControllerEmulator:
         Mueve el joystick izquierdo horizontalmente.
         x_value: Valor entre -1.0 y 1.0, donde -1.0 es izquierda y 1.0 es derecha.
         """
-        if not (-1.0 <= x_value <= 1.0):
-            raise ValueError("x_value debe estar entre -1.0 (izquierda) y 1.0 (derecha)")
+        # Limitar el valor entre -1.0 y 1.0
+        x_value = max(min(x_value, 1.0), -1.0)
         
         # Mover el joystick horizontalmente (x), mantener vertical (y) en el centro (0.0)
         self.gamepad.left_joystick_float(x_value, 0.0)
@@ -32,8 +32,8 @@ class XboxControllerEmulator:
         Presiona uno de los gatillos.
         value: Valor entre -1.0 (freno al máximo) 0.0 (sin presión) y 1.0 (aceleración máxima).
         """
-        if not (-1.0 <= value <= 1.0):
-            raise ValueError(f"El valor del gatillo debe estar entre -1.0 y 1.0, se recibió: {value}")
+        # Limitar el valor entre -1.0 y 1.0
+        value = max(min(value, 1.0), -1.0)
         
         if value < 0:
             self.gamepad.left_trigger_float(-value)  # Gatillo izquierdo
@@ -41,6 +41,7 @@ class XboxControllerEmulator:
             self.gamepad.right_trigger_float(value)  # Gatillo derecho
 
         self.gamepad.update()  # Actualizar el estado del gamepad
+
 
     def reset(self):
         """

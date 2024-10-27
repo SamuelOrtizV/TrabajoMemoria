@@ -22,4 +22,6 @@ predictions csv/
 # Ignorar la carpeta de scripts antiguos
 old_scripts/
 
-trained_models
+trained_models/
+
+supervised learning/

@@ -99,6 +99,9 @@ class CNN(nn.Module):
             for param in self.cnn.parameters():  # Desactivar el gradiente para las capas convolucionales preentrenadas
                 param.requires_grad = False
         
+        # Obtener el tamaño de la salida de la CNN
+        self.conv_output_size = self._get_conv_output_size()
+
         if dropout > 0:
             self.dropout_layer = nn.Dropout(dropout)
         else:
@@ -284,34 +287,44 @@ class CNN_LSTM_STATE(nn.Module):
 
 # Definir las redes del actor y crítico
 class Actor(nn.Module):
-    def __init__(self, cnn_name, output_size, input_size=(3, 224, 224), dropout=0, bias=True, cnn_train=True):
+    def __init__(self, cnn_name, output_size, input_size=(3, 224, 224), dropout=0.5, bias=True, cnn_train=True):
         super(Actor, self).__init__()
         self.cnn = CNN(cnn_name, input_size, dropout, bias, cnn_train)
-        conv_output_size = self.cnn._get_conv_output_size()
+        conv_output_size = self.cnn.conv_output_size
         self.fc1 = nn.Linear(conv_output_size, 256)
+        self.dropout1 = nn.Dropout(dropout)
         self.fc2 = nn.Linear(256, 256)
+        self.dropout2 = nn.Dropout(dropout)
         self.fc3 = nn.Linear(256, output_size)
     
     def forward(self, x):
         x = self.cnn(x)
         x = F.relu(self.fc1(x))
+        x = self.dropout1(x)
         x = F.relu(self.fc2(x))
+        x = self.dropout2(x)
         return torch.tanh(self.fc3(x))
 
 class Critic(nn.Module):
-    def __init__(self, cnn_name, output_size, input_size=(3, 224, 224), dropout=0, bias=True, cnn_train=True):
+    def __init__(self, cnn_name, output_size, input_size=(3, 224, 224), dropout=0.5, bias=True, cnn_train=True):
         super(Critic, self).__init__()
         self.cnn = CNN(cnn_name, input_size, dropout, bias, cnn_train)
-        conv_output_size = self.cnn._get_conv_output_size()
+        conv_output_size = self.cnn.conv_output_size
         self.fc1 = nn.Linear(conv_output_size + output_size, 256)
+        self.dropout1 = nn.Dropout(dropout)
         self.fc2 = nn.Linear(256, 256)
+        self.dropout2 = nn.Dropout(dropout)
         self.fc3 = nn.Linear(256, 1)
     
     def forward(self, state, action):
         state_features = self.cnn(state)
-        x = torch.cat([state_features, action], dim=-1)
+        state_features_flat = state_features.view(state_features.size(0), -1)  # Aplanar el tensor de estado
+        action_flat = action.view(action.size(0), -1)  # Aplanar el tensor de acción
+        x = torch.cat([state_features_flat, action_flat], dim=-1)
         x = F.relu(self.fc1(x))
+        x = self.dropout1(x)
         x = F.relu(self.fc2(x))
+        x = self.dropout2(x)
         return self.fc3(x)
 
 def selected_model(architecture, cnn_name, hidden_size, output_size, input_size=(3, 224, 224), num_layers=1, dropout=0, bias=True, cnn_train=True):
@@ -326,3 +339,4 @@ def selected_model(architecture, cnn_name, hidden_size, output_size, input_size=
     else:
         raise ValueError("La arquitectura seleccionada no es válida.")
     return model
+
