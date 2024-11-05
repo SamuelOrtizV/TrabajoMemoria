@@ -5,7 +5,7 @@ class XboxControllerEmulator:
     def __init__(self):
         # Crear una instancia de un gamepad de Xbox virtual
         self.gamepad = vg.VX360Gamepad()
-        self.wait_before_start = 5  # Segundos antes de comenzar a leer el controlador
+        self.wait_before_start = 1 #5  # Segundos antes de comenzar a leer el controlador
 
         # Espera algunos segundos antes de comenzar a emular el controlador
         for delay in range(int(self.wait_before_start), 0, -1):

@@ -2,11 +2,7 @@ Probar el modelo desde lo más basíco e ir descartando problemas.
 
 Reunir datos en una pista simple y una vez funcione implementar otras más complejas
 
-Color Jitter
-
 Images dropout
-
-LR que decaiga con el tiempo
 
 Velocimetro en pantalla
 
@@ -24,3 +20,9 @@ CNN solo es casi 4 veces más rapida que CNN_RNN Entrenando al maximo de lo que 
 AVERIGUAR CUÁNTOS PARÁMETROS TIENE EL MODELO
 
 Ver si usar una neurona para aceleracion y freno o si usar 2 independientes
+
+Ver sincronización imagenes de entrada
+
+Ver replay buffer y como se está usando
+
+ver que el batch se esté cargando bien en el buffer
