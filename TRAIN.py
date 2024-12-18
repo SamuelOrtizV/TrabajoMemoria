@@ -11,6 +11,7 @@ from inputs.getkeys import key_check
 from UDP_listener import udp_listener
 from ScreenRecorder import *
 from torchvision import transforms
+from AC_Env import AC_Env
 import time
 import torch.nn.functional as F
 import threading
@@ -83,109 +84,8 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalizar la imagen
 ])
 
-# Definir el entorno personalizado
-class RacingEnv(gym.Env):
-    def __init__(self, model):
-        super(RacingEnv, self).__init__()
-        self.controller = XboxControllerEmulator()  
-        self.region = get_region(screen_size, True)
-        self.previous_variables = None
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = model.to(self.device)
-
-        # Definir espacios de acción y observación
-        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
-        self.observation_space = gym.spaces.Box(
-            low=-2.1179,  # Aproximado de (0 - 0.485) / 0.229 para el canal rojo
-            high=2.2489,  # Aproximado de (1 - 0.406) / 0.224 para el canal azul
-            shape=(3, *input_size), 
-            dtype=np.float32
-        )
-
-        self.current_image = None  # Para almacenar la imagen capturada
-
-        # Iniciar hilo de captura
-        self.lock = threading.Lock()
-        self.capture_thread = threading.Thread(target=self.capture_images)
-        self.capture_thread.start()      
-
-    def capture_images(self):
-        while not stop_event.is_set():
-            start_time = time.time()
-            with self.lock:
-                self.current_image = capture_and_process(self.region, transform, self.device)  # Actualiza la imagen
-                time.sleep(max(0, 1/fps - (time.time() - start_time)))    
-
-    def get_observation(self):
-        return self.current_image  # Retorna la última imagen capturada
-        
-    def apply_action(self, action):
-        self.controller.steering(action[0])  # Enviar la acción de dirección al simulador
-        self.controller.throttle_break(action[1])  # Enviar la acción de aceleración/freno al simulador
-
-    def reset(self):
-        # Asegurar que el hilo de captura está activo y que la imagen no es None
-        if not self.capture_thread.is_alive():
-            raise RuntimeError("El hilo de captura no está activo.")
-        while self.current_image is None:
-            time.sleep(0.01)  # Espera a que haya una imagen capturada
-        
-        self.controller.reset()
-
-        # reset_environment()  # Reiniciar el simulador si es necesario
-
-        obs = self.get_observation()
-        self.previous_variables = {
-            "previous_checkpoint": 0.0,
-            "previous_position": 0.0,
-            "previous_lap": 0
-        }
-        return obs
-
-    def step(self, action):
-        if not self.capture_thread.is_alive():
-            raise RuntimeError("El hilo de captura no está activo.")
-        if self.current_image is None:
-            raise RuntimeError("No hay imagen disponible para el paso actual.")
-        
-        with self.lock:
-            # Enviar la acción al entorno
-            self.apply_action(action)
-            obs = self.get_observation()
-            #variables = udp_listener()
-            variables = { # Placeholder para las variables del entorno
-                    "speed": 0.0,
-                    "rpms": 0,
-                    "laps": 0,
-                    "track_position": 0.0,
-                    "tyres_out": 0,
-                    "car_damage": 0.0,
-                    "transmitting": False
-                    }
-            reward, done = calculate_reward(variables, rewards, self.previous_variables)
-            info = {}
-            return obs, reward, done, info
-
-    def predict_action(self):
-        obs = self.get_observation()
-        with torch.no_grad():
-            with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
-                # La CNN toma la observación procesada y genera una acción
-                action_values = self.model(obs)
-                # Limita los valores de acción y los convierte en una lista para usarlos en el entorno
-                action = torch.clamp(action_values, min=-1.0, max=1.0).tolist()[0]
-        return action
-
-    def close(self):
-        self.controller.reset()
-        stop_event.set()        
-        key_thread.join()
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-        self.capture_thread.join()
-
 # Inicializar y verificar el entorno
-env = RacingEnv()
+env = 
 check_env(env)
 
 # Entrenar el modelo SAC
