@@ -13,3 +13,4 @@ Requests==2.32.3
 torch==2.4.1+cu124
 torchvision==0.19.1+cu124
 vgamepad==0.1.0
+tmrl==0.7.0

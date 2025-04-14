@@ -26,3 +26,17 @@ Ver sincronización imagenes de entrada
 Ver replay buffer y como se está usando
 
 ver que el batch se esté cargando bien en el buffer
+
+
+-----
+
+
+guardado de replays cada cierto tiempo para ver el progreso
+
+recompensa por mejorar tiempo de vuelta
+
+ver si quitar datos de telemetría como espacio de observación
+
+explorar hiperparametros
+
+Sacar archivos de memoria y modelos del tmrl y personalizarlos. Lidiar con los valores default y los de cfg_obj
