@@ -21,7 +21,7 @@ class XboxControllerEmulator:
             self.gamepad.right_trigger_float(value_float=control[0])
         else:
             self.gamepad.right_trigger_float(value_float=0.0)
-        if control[1] > 0:  # break
+        if control[1] > 0:  # brake
             self.gamepad.left_trigger_float(value_float=control[1])
         else:
             self.gamepad.left_trigger_float(value_float=0.0)

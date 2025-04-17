@@ -63,7 +63,7 @@ class AC_Interface(RealTimeGymInterface):
                 self.window_interface = WindowInterface("Assetto Corsa",)
                 break
             except Exception as e:
-                print("Waiting for Assetto Corsa window...                                                                        ", end="\r")
+                print("Waiting for Assetto Corsa's window...                                                                        ", end="\r")
                 time.sleep(0.1)
 
         self.last_time = time.time()
