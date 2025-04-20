@@ -17,15 +17,6 @@ my_rtgym_config = AC_ENV_CONFIG
 
 # Environment class:
 env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config": my_rtgym_config})
-# Observation and action space:
-
-dummy_env = env_cls()
-act_space = dummy_env.action_space
-obs_space = dummy_env.observation_space
-
-print(f"action space: {act_space}")
-print(f"observation space: {obs_space}")
-
 
 # Now that we have defined our environment, let us train an agent with the generic TMRL pipeline.
 # TMRL pipelines have a central communication Server, a Trainer, and one to several RolloutWorkers.
@@ -38,6 +29,8 @@ print(f"observation space: {obs_space}")
 
 # ActorModule:
 
+actor_module_cls = SquashedGaussianVanillaCNNActor
+
 # SquashedGaussianMLPActor processes observations through an MLP.
 # It is designed to work with the SAC algorithm.
 #actor_module_cls = partial(SquashedGaussianVanillaCNNActor)
@@ -49,7 +42,7 @@ model_history = -1  # let us not save a model history.
 if __name__ == "__main__":
     my_worker = RolloutWorker(
         env_cls=env_cls,
-        actor_module_cls=SquashedGaussianVanillaCNNActor,
+        actor_module_cls=actor_module_cls,
         sample_compressor=get_local_buffer_sample_imgs,  #cfg_obj.SAMPLE_COMPRESSOR, #
         device= "cuda" if cfg.CUDA_INFERENCE else "cpu",  # True if CUDA, False if CPU (rollout worker)
         max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE,

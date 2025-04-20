@@ -4,15 +4,6 @@ import random
 # local imports
 from tmrl.memory import TorchMemory
 
-# standard library imports
-import os
-import pickle
-import zlib
-from abc import ABC, abstractmethod
-from pathlib import Path
-from random import randint
-import logging
-
 
 # FUNCTIONS ====================================================
 
@@ -37,18 +28,6 @@ def replace_hist_before_eoe(hist, eoe_idx_in_hist):
             if i <= eoe_idx_in_hist:
                 hist[i] = hist[i + 1]
 
-""" def check_samples_crc(original_po, original_a, original_o, original_r, original_d, original_t, rebuilt_po, rebuilt_a, rebuilt_o, rebuilt_r, rebuilt_d, rebuilt_t, debug_ts, debug_ts_res):
-    assert original_po is None or str(original_po) == str(rebuilt_po), f"previous observations don't match:\noriginal:\n{original_po}\n!= rebuilt:\n{rebuilt_po}\nTime step: {debug_ts}, since reset: {debug_ts_res}"
-    assert str(original_a) == str(rebuilt_a), f"actions don't match:\noriginal:\n{original_a}\n!= rebuilt:\n{rebuilt_a}\nTime step: {debug_ts}, since reset: {debug_ts_res}"
-    assert str(original_o) == str(rebuilt_o), f"observations don't match:\noriginal:\n{original_o}\n!= rebuilt:\n{rebuilt_o}\nTime step: {debug_ts}, since reset: {debug_ts_res}"
-    assert str(original_r) == str(rebuilt_r), f"rewards don't match:\noriginal:\n{original_r}\n!= rebuilt:\n{rebuilt_r}\nTime step: {debug_ts}, since reset: {debug_ts_res}"
-    assert str(original_d) == str(rebuilt_d), f"terminated don't match:\noriginal:\n{original_d}\n!= rebuilt:\n{rebuilt_d}\nTime step: {debug_ts}, since reset: {debug_ts_res}"
-    assert str(original_t) == str(rebuilt_t), f"truncated don't match:\noriginal:\n{original_t}\n!= rebuilt:\n{rebuilt_t}\nTime step: {debug_ts}, since reset: {debug_ts_res}"
-    original_crc = zlib.crc32(str.encode(str((original_a, original_o, original_r, original_d, original_t))))
-    crc = zlib.crc32(str.encode(str((rebuilt_a, rebuilt_o, rebuilt_r, rebuilt_d, rebuilt_t))))
-    assert crc == original_crc, f"CRC failed: new crc:{crc} != old crc:{original_crc}.\nEither the custom pipeline is corrupted, or crc_debug is False in the rollout worker.\noriginal sample:\n{(original_a, original_o, original_r, original_d)}\n!= rebuilt sample:\n{(rebuilt_a, rebuilt_o, rebuilt_r, rebuilt_d)}\nTime step: {debug_ts}, since reset: {debug_ts_res}"
-    print(f"DEBUG: CRC check passed. Time step: {debug_ts}, since reset: {debug_ts_res}")
- """
 # LOCAL BUFFER COMPRESSION ===============================================================
 
 def get_local_buffer_sample_imgs(prev_act, obs, rew, terminated, truncated, info):
@@ -66,7 +45,6 @@ def get_local_buffer_sample_imgs(prev_act, obs, rew, terminated, truncated, info
 
     prev_act_mod = prev_act
 
-    # Construye obs_mod dinámicamente
     obs_mod = (obs[0], obs[1], obs[2], obs[3][-1])
     rew_mod = rew
     terminated_mod = terminated
@@ -256,7 +234,7 @@ class MemoryFull(MemoryEnv):
 
     def load_imgs(self, item):
         res = self.data[3][(item + self.start_imgs_offset):(item + self.start_imgs_offset + self.imgs_obs + 1)]
-        return np.stack(res) #.astype(np.float32) / 255.0 # Aqui deberia ser 255.0 y creo que no es necesario hacer la conversion
+        return np.stack(res)
 
     def load_acts(self, item):
         res = self.data[1][(item + self.start_acts_offset):(item + self.start_acts_offset + self.act_buf_len + 1)]

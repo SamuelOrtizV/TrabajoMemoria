@@ -4,14 +4,12 @@ from tmrl.networking import Trainer
 from tmrl.util import partial
 from tmrl.envs import GenericGymEnv
 import tmrl.config.config_constants as cfg
-import tmrl.config.config_objects as cfg_obj
 from tmrl.training_offline import TorchTrainingOffline
-from tmrl.custom.custom_algorithms import SpinupSacAgent as SAC_Agent
+from custom_algorithms import SAC_Agent
 
 from environment import AC_ENV_CONFIG
 from memories import MemoryFull
 from custom_models import VanillaCNNActorCritic
-
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
 
@@ -25,14 +23,12 @@ my_rtgym_config = AC_ENV_CONFIG
 
 env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config": my_rtgym_config})
 
-# Observation and action space:
-
 dummy_env = env_cls()
-act_space = dummy_env.action_space
 obs_space = dummy_env.observation_space
+act_space = dummy_env.action_space
 
-print(f"action space: {act_space}")
-print(f"observation space: {obs_space}")
+print("Observation space: ", obs_space)
+print("Action space: ", act_space)
 
 # === TMRL Trainer =====================================================================================================
 
@@ -50,7 +46,7 @@ print(f"observation space: {obs_space}")
 
 # Dummy environment OR (observation space, action space) tuple:
 # env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config": my_rtgym_config})
-env_cls = (obs_space, act_space)
+#env_cls = (obs_space, act_space)
 
 # Memory:
 
@@ -63,9 +59,11 @@ memory_cls = partial(MemoryFull,
                      act_buf_len=cfg.ACT_BUF_LEN,
                      crc_debug=CRC_DEBUG)
 
-# Training agent:
+# Model:
 
-#training_agent_cls = cfg_obj.AGENT
+model_cls = VanillaCNNActorCritic
+
+# Training agent:
 
 ALG_CONFIG = cfg.TMRL_CONFIG["ALG"]
 
@@ -73,7 +71,8 @@ if ALG_CONFIG["ALGORITHM"] == "SAC":
     training_agent_cls = partial(
             SAC_Agent,
             device='cuda' if cfg.CUDA_TRAINING else 'cpu',
-            model_cls=VanillaCNNActorCritic,
+            model_cls=model_cls,
+            mixed_precision=ALG_CONFIG["MIXED_PRECISION"],
             lr_actor=ALG_CONFIG["LR_ACTOR"],
             lr_critic=ALG_CONFIG["LR_CRITIC"],
             lr_entropy=ALG_CONFIG["LR_ENTROPY"],

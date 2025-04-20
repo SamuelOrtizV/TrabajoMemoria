@@ -513,9 +513,10 @@ class VanillaCNN(Module):
         super(VanillaCNN, self).__init__()
         self.q_net = q_net
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
-        hist = cfg.IMG_HIST_LEN
+        self.hist_len = cfg.IMG_HIST_LEN
+        self.num_channels = 1 if cfg.GRAYSCALE else 3
    
-        self.conv1 = Conv2d(hist, 64, 8, stride=2)
+        self.conv1 = Conv2d(self.hist_len * self.num_channels, 64, 8, stride=2)
         self.h_out, self.w_out = conv2d_out_dims(self.conv1, self.h_out, self.w_out)
         self.conv2 = Conv2d(64, 64, 4, stride=2)
         self.h_out, self.w_out = conv2d_out_dims(self.conv2, self.h_out, self.w_out)
@@ -531,11 +532,9 @@ class VanillaCNN(Module):
 
     def forward(self, x):
         if self.q_net:
-            #speed, gear, rpm, images, act1, act2, act = x
-            speed, gear, rpm, images, act1, act = x
+            speed, gear, rpm, images, prev_act, act = x
         else:    
-            #speed, gear, rpm, images, act1, act2 = x
-            speed, gear, rpm, images, act1 = x
+            speed, gear, rpm, images, prev_act = x
 
         images = images.float() / 255.0
 
@@ -543,15 +542,16 @@ class VanillaCNN(Module):
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv4(x))
+
         flat_features = num_flat_features(x)
         assert flat_features == self.flat_features, f"x.shape:{x.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
         x = x.view(-1, flat_features)
+
         if self.q_net:
-            #x = torch.cat((speed, gear, rpm, x, act1, act2, act), -1)
-            x = torch.cat((speed, gear, rpm, x, act1, act), -1)
+            x = torch.cat((speed, gear, rpm, x, prev_act, act), -1)
         else:
-            #x = torch.cat((speed, gear, rpm, x, act1, act2), -1)
-            x = torch.cat((speed, gear, rpm, x, act1), -1)
+            x = torch.cat((speed, gear, rpm, x, prev_act), -1)
+
         x = self.mlp(x)
         return x
 
@@ -565,9 +565,20 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
         self.act_limit = act_limit
+        self.grayscale = cfg.GRAYSCALE
 
     def forward(self, obs, test=False, with_logprob=True):
-        net_out = self.net(obs)
+        
+        if self.grayscale:
+            net_out = self.net(obs)            
+        else:
+            speed, gear, rpm, images, prev_act = obs
+            batch_size, hist_len, height, width, channels = images.shape
+            images = images.permute(0, 1, 4, 2, 3)  # Cambia a (batch_size, hist_len, channels, height, width)
+            images = images.reshape(batch_size, hist_len * channels, height, width)  # Combina historial y canales
+            net_out = self.net((speed, gear, rpm, images, prev_act))
+            
+        
         mu = self.mu_layer(net_out)
         log_std = self.log_std_layer(net_out)
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
@@ -606,9 +617,24 @@ class VanillaCNNQFunction(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
         self.net = VanillaCNN(q_net=True)
+        self.grayscale = cfg.GRAYSCALE
 
     def forward(self, obs, act):
-        x = (*obs, act)
+
+        if self.grayscale:
+            x = (*obs, act)
+        else:
+            speed, gear, rpm, images, prev_act = obs
+            batch_size, hist_len, height, width, channels = images.shape
+
+            # Reorganiza las dimensiones: combina historial y canales
+            images = images.permute(0, 1, 4, 2, 3)  # Cambia a (batch_size, hist_len, channels, height, width)
+            images = images.reshape(batch_size, hist_len * channels, height, width)  # Combina historial y canales
+
+            # Pasa las imágenes reorganizadas a la red convolucional
+            x = (speed, gear, rpm, images, prev_act, act)
+
+        
         q = self.net(x)
         return torch.squeeze(q, -1)  # Critical to ensure q has right shape.
 
@@ -626,46 +652,6 @@ class VanillaCNNActorCritic(nn.Module):
         with torch.no_grad():
             a, _ = self.actor(obs, test, False)
             return a.squeeze().cpu().numpy()
-
-
-# Vanilla CNN FOR COLOR IMAGES: ========================================================================================
-
-def remove_colors(images):
-    """
-    We remove colors so that we can simply use the same structure as the grayscale model.
-
-    The "color" default pipeline is mostly here for support, as our model effectively gets rid of 2 channels out of 3.
-    If you actually want to use colors, do not use the default pipeline.
-    Instead, you need to code a custom model that doesn't get rid of them.
-    """
-    images = images[:, :, :, :, 0]
-    return images
-
-
-class SquashedGaussianVanillaColorCNNActor(SquashedGaussianVanillaCNNActor):
-    def forward(self, obs, test=False, with_logprob=True):
-        speed, gear, rpm, images, act1, act2 = obs
-        images = remove_colors(images)
-        obs = (speed, gear, rpm, images, act1, act2)
-        return super().forward(obs, test=False, with_logprob=True)
-
-
-class VanillaColorCNNQFunction(VanillaCNNQFunction):
-    def forward(self, obs, act):
-        speed, gear, rpm, images, act1, act2 = obs
-        images = remove_colors(images)
-        obs = (speed, gear, rpm, images, act1, act2)
-        return super().forward(obs, act)
-
-
-class VanillaColorCNNActorCritic(VanillaCNNActorCritic):
-    def __init__(self, observation_space, action_space):
-        super().__init__(observation_space, action_space)
-
-        # build policy and value functions
-        self.actor = SquashedGaussianVanillaColorCNNActor(observation_space, action_space)
-        self.q1 = VanillaColorCNNQFunction(observation_space, action_space)
-        self.q2 = VanillaColorCNNQFunction(observation_space, action_space)
 
 
 # UNSUPPORTED ==========================================================================================================

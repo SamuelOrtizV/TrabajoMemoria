@@ -35,8 +35,6 @@ guardado de replays cada cierto tiempo para ver el progreso
 
 recompensa por mejorar tiempo de vuelta
 
-ver si quitar datos de telemetría como espacio de observación
+ver si quitar datos de telemetría como espacio de observación (rpms, vel, gear)
 
 explorar hiperparametros
-
-Sacar archivos de memoria y modelos del tmrl y personalizarlos. Lidiar con los valores default y los de cfg_obj

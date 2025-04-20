@@ -5,7 +5,7 @@ class RewardFunction:
     """
     def __init__(self,
                  max_mistakes=10,
-                 steps_to_forget=50,
+                 steps_to_forget=100,
                  min_nb_steps_before_failure=int(3.5 * 20),
                  reward_speed_weight=0.1,
                  reward_track_position_weight=5,
@@ -16,7 +16,7 @@ class RewardFunction:
                  penalty_car_damage=-2.0,
                  threshold_speed=10.0,
                  threshold_rpms=2000.0,
-                 threshold_checkpoint=0.01                              
+                 threshold_checkpoint=0.001                              
                  ):
         """
         Instantiates a reward function for AC
@@ -80,7 +80,7 @@ class RewardFunction:
             reward += self.reward_laps_weight
             self.previous_lap = telemetry_data["laps"]
 
-        track_position = 0.0 if telemetry_data["track_position"] >= 1.0 else telemetry_data["track_position"]
+        track_position = 0.0 if telemetry_data["track_position"] >= 0.995 else telemetry_data["track_position"]
         position_difference = track_position - self.previous_position
         checkpoint_difference = track_position - self.previous_checkpoint
         self.previous_position = track_position

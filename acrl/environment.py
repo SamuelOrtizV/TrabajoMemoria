@@ -28,8 +28,8 @@ class AC_Interface(RealTimeGymInterface):
                  img_hist_len: int = 4,
                  gamepad: bool = True,
                  save_replays: bool = False, #POR IMPLEMENTAR
-                 grayscale: bool = True,
-                 resize_to=(64, 64)):
+                 grayscale: bool = cfg.GRAYSCALE,
+                 resize_to=(cfg.IMG_WIDTH, cfg.IMG_HEIGHT)):
         """
         Base rtgym interface for Assetto Corsa 
 
@@ -50,9 +50,11 @@ class AC_Interface(RealTimeGymInterface):
         self.window_interface = None
         self.save_replays = save_replays
         self.grayscale = grayscale
-        self.resize_to = resize_to
+        self.resize_to = resize_to if resize_to != (cfg.WINDOW_WIDTH, cfg.WINDOW_HEIGHT) else None
+        print(f"\nResizing images to {self.resize_to}\n")
         self.fullscreen = cfg.ENV_CONFIG['FULL_SCREEN']
         self.initialized = False
+        self.best = 0.0
 
     def initialize_common(self):
         if self.gamepad:
@@ -92,7 +94,7 @@ class AC_Interface(RealTimeGymInterface):
         while not self.grab_data()["transmitting"]:
             time.sleep(0.1)
             print("Waiting for telemetry data...                                                                             ", end="\r")
-        print("Telemetry data received")
+        print("Telemetry data received\n")
         self.initialized = True
 
     def send_control(self, control):
@@ -121,7 +123,7 @@ class AC_Interface(RealTimeGymInterface):
                     actions.append('l')
                 apply_control(actions) """
             
-        print(f"Sending control: {np.round(control, 2)} ", end="\r")
+        print(f"Best lap: {self.best}  Gas Brake Turn: {np.round(control, 2)} ", end="\r")
 
     def grab_data(self):
         """
@@ -137,8 +139,10 @@ class AC_Interface(RealTimeGymInterface):
             img = cv2.resize(img, self.resize_to)
         if self.grayscale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            # shape is (height, width) for cv2 grayscale images
         else:
             img = img[:, :, ::-1]  # reversed view for numpy RGB convention
+            # shape is (height, width, channels) for cv2 images
         # img = img.astype(np.float32) / 255.0
         return img
 
@@ -216,6 +220,10 @@ class AC_Interface(RealTimeGymInterface):
         obs = [speed, gear, rpm, imgs]        
         info = {}       
         rew = np.float32(rew)
+
+        if data["track_position"] > self.best and data["track_position"] < 0.995:
+            self.best = data["track_position"]
+
         return obs, rew, terminated, info
 
     def get_observation_space(self):
@@ -241,7 +249,7 @@ class AC_Interface(RealTimeGymInterface):
         if self.grayscale:
             img = spaces.Box(low=0.0, high=255.0, shape=(self.img_hist_len, h, w))  # cv2 grayscale images are (h, w)
         else:
-            img = spaces.Box(low=0.0, high=255.0, shape=(self.img_hist_len, h, w, 3))  # cv2 images are (h, w, c)
+            img = spaces.Box(low=0.0, high=255.0, shape=(self.img_hist_len * 3, h, w))#, 3))  # cv2 images are (h, w, c)
         return spaces.Tuple((speed, gear, rpm, img))
 
     def get_action_space(self):
