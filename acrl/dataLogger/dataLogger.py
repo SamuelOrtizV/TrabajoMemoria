@@ -67,8 +67,8 @@ class GearIndicator:
         ac.setPosition(self.currentValueLabel, x + 50, y)
         
     def setCurrentValue(self, value):
-        ac.setText(self.currentValueLabel, "{0}".format(value))                                             
-
+        ac.setText(self.currentValueLabel, "{0}".format(value))
+   
 class LapIndicator:
     def __init__(self, app, x, y, name):
         self.xPosition = x

@@ -12,3 +12,9 @@ ruta para guardado de datos y si mostrar captura de datos en otra pestaña (cons
 
 
 
+________________________________________________________________________
+
+Para el funcionamiento de un trbajador se requiere el uso de las siguientes apps de ac:
+
+    Data Logger (Obtiene datos de telemetría)
+    IS Add Shortcut Key (Permite iniciar y reiniciar las sesiones)
