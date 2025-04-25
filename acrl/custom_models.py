@@ -291,10 +291,11 @@ class EffNetV2(nn.Module):
     def __init__(self, cfgs, nb_channels_in=3, dim_output=1, width_mult=1.):
         super(EffNetV2, self).__init__()
         self.cfgs = cfgs
+        self.nb_channels_in = nb_channels_in #
 
         # building first layer
         input_channel = _make_divisible(24 * width_mult, 8)
-        layers = [conv_3x3_bn(nb_channels_in, input_channel, 2)]
+        layers = [conv_3x3_bn(self.nb_channels_in, input_channel, 2)] #
         # building inverted residual blocks
         block = MBConv
         for t, c, n, s, use_se in self.cfgs:
@@ -407,16 +408,35 @@ class SquashedGaussianEffNetActor(TorchActorModule):
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
 
-        self.cnn = effnetv2_s(nb_channels_in=4, dim_output=247, width_mult=1.).float()
+        # Ajusta el número de canales según si es escala de grises o color
+        self.grayscale = cfg.GRAYSCALE
+        nb_channels_in = 1 if self.grayscale else 3  # 1 para escala de grises, 3 para color
+        self.cnn = effnetv2_s(nb_channels_in=nb_channels_in * cfg.IMG_HIST_LEN, dim_output=247, width_mult=1.).float()
+
         self.net = mlp([256, 256], [nn.ReLU, nn.ReLU])
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
         self.act_limit = act_limit
 
+
     def forward(self, obs, test=False, with_logprob=True):
         imgs_tensor = obs[3].float()
         float_tensors = (obs[0], obs[1], obs[2], *obs[4:])
         float_tensor = torch.cat(float_tensors, -1).float()
+
+        # Ajusta las dimensiones según si es escala de grises o color
+        batch_size, hist_len, height, width, channels = imgs_tensor.shape
+        if self.grayscale:
+            # Para escala de grises: combina historial en un solo canal
+            imgs_tensor = imgs_tensor.reshape(batch_size, hist_len, height, width)
+            imgs_tensor = imgs_tensor.unsqueeze(1)  # Agrega un canal
+            imgs_tensor = imgs_tensor.reshape(batch_size, hist_len, height, width)
+        else:
+            # Para color: combina historial y canales
+            imgs_tensor = imgs_tensor.permute(0, 1, 4, 2, 3)  # (batch_size, hist_len, channels, height, width)
+            imgs_tensor = imgs_tensor.reshape(batch_size, hist_len * channels, height, width)
+
+
         cnn_out = self.cnn(imgs_tensor)
         mlp_in = torch.cat((cnn_out, float_tensor), -1)
         net_out = self.net(mlp_in)
@@ -459,7 +479,7 @@ class SquashedGaussianEffNetActor(TorchActorModule):
             return a.squeeze().cpu().numpy()
 
 
-class EffNetQFunction(nn.Module):
+""" class EffNetQFunction(nn.Module):
     def __init__(self, obs_space, act_space, hidden_sizes=(256, 256), activation=nn.ReLU):
         super().__init__()
         obs_dim = sum(prod(s for s in space.shape) for space in obs_space)
@@ -470,7 +490,46 @@ class EffNetQFunction(nn.Module):
         x = torch.cat((*obs, act), -1)
         q = self.q(x)
         return torch.squeeze(q, -1)  # Critical to ensure q has right shape.
+ """
 
+class EffNetQFunction(nn.Module):
+    def __init__(self, observation_space, action_space, hidden_sizes=(256, 256), activation=nn.ReLU):
+        super().__init__()
+        self.grayscale = cfg.GRAYSCALE
+        nb_channels_in = 1 if self.grayscale else 3  # 1 para escala de grises, 3 para color
+        self.cnn = effnetv2_s(nb_channels_in=nb_channels_in * cfg.IMG_HIST_LEN, dim_output=256, width_mult=1.).float()
+
+        obs_dim = sum(prod(s for s in space.shape) for space in observation_space if len(space.shape) == 1)
+        act_dim = action_space.shape[0]
+
+        # MLP para combinar las características de EffNet con las demás entradas
+        self.q = mlp([256 + obs_dim + act_dim] + list(hidden_sizes) + [1], activation)
+
+    def forward(self, obs, act):
+        imgs_tensor = obs[3].float()  # Tensor de imágenes
+        float_tensors = (obs[0], obs[1], obs[2], *obs[4:])
+        float_tensor = torch.cat(float_tensors, -1).float()
+
+        # Ajusta las dimensiones según si es escala de grises o color
+        batch_size, hist_len, height, width, channels = imgs_tensor.shape
+        if self.grayscale:
+            # Para escala de grises: combina historial en un solo canal
+            imgs_tensor = imgs_tensor.reshape(batch_size, hist_len, height, width)
+            imgs_tensor = imgs_tensor.unsqueeze(1)  # Agrega un canal
+            imgs_tensor = imgs_tensor.reshape(batch_size, hist_len, height, width)
+        else:
+            # Para color: combina historial y canales
+            imgs_tensor = imgs_tensor.permute(0, 1, 4, 2, 3)  # (batch_size, hist_len, channels, height, width)
+            imgs_tensor = imgs_tensor.reshape(batch_size, hist_len * channels, height, width)
+
+        # Procesa las imágenes con EffNet
+        cnn_out = self.cnn(imgs_tensor)
+
+        # Combina las características de EffNet con las demás entradas
+        q_in = torch.cat((cnn_out, float_tensor, act), -1)
+        q = self.q(q_in)
+
+        return torch.squeeze(q, -1)  # Asegura que la salida tenga la forma correcta
 
 class EffNetActorCritic(nn.Module):
     def __init__(self, observation_space, action_space, hidden_sizes=(256, 256), activation=nn.ReLU):
@@ -482,8 +541,10 @@ class EffNetActorCritic(nn.Module):
 
         # build policy and value functions
         self.actor = SquashedGaussianMLPActor(observation_space, action_space, hidden_sizes, activation)
-        self.q1 = MLPQFunction(observation_space, action_space, hidden_sizes, activation)
-        self.q2 = MLPQFunction(observation_space, action_space, hidden_sizes, activation)
+        """ self.q1 = MLPQFunction(observation_space, action_space, hidden_sizes, activation)
+        self.q2 = MLPQFunction(observation_space, action_space, hidden_sizes, activation) """
+        self.q1 = EffNetQFunction(observation_space, action_space, hidden_sizes, activation)
+        self.q2 = EffNetQFunction(observation_space, action_space, hidden_sizes, activation)
 
     def act(self, obs, test=False):
         with torch.no_grad():
@@ -491,7 +552,7 @@ class EffNetActorCritic(nn.Module):
             return a.squeeze().cpu().numpy()
 
 
-# Vanilla CNN FOR GRAYSCALE IMAGES: ====================================================================================
+# Vanilla CNN: ====================================================================================
 
 
 def num_flat_features(x):
@@ -527,6 +588,7 @@ class VanillaCNN(Module):
         self.out_channels = self.conv4.out_channels
         self.flat_features = self.out_channels * self.h_out * self.w_out
         self.mlp_input_features = self.flat_features + 9 if self.q_net else self.flat_features + 6
+
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
 
@@ -555,13 +617,56 @@ class VanillaCNN(Module):
         x = self.mlp(x)
         return x
 
+class CustomCNN(Module):
+    def __init__(self, q_net):
+        super(CustomCNN, self).__init__()
+        self.q_net = q_net
+        self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
+        self.hist_len = cfg.IMG_HIST_LEN
+        self.num_channels = 1 if cfg.GRAYSCALE else 3
+
+        # Capas convolucionales con EfficientNet
+        self.cnn = effnetv2_s(
+            nb_channels_in=self.hist_len * self.num_channels,
+            dim_output=256,  # Salida de características de EfficientNet
+            width_mult=1.0
+        ).float()
+
+        # Calcular las características planas de salida
+        self.flat_features = 256  # Salida de EfficientNet
+        self.mlp_input_features = self.flat_features + 9 if self.q_net else self.flat_features + 6
+        self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
+        self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
+
+    def forward(self, x):
+        if self.q_net:
+            speed, gear, rpm, images, prev_act, act = x
+        else:
+            speed, gear, rpm, images, prev_act = x
+
+        # Normalizar imágenes
+        images = images.float() / 255.0
+
+        # Extraer características con EfficientNet
+        cnn_out = self.cnn(images)
+
+        # Concatenar características adicionales
+        if self.q_net:
+            x = torch.cat((speed, gear, rpm, cnn_out, prev_act, act), -1)
+        else:
+            x = torch.cat((speed, gear, rpm, cnn_out, prev_act), -1)
+
+        # Pasar por el MLP
+        x = self.mlp(x)
+        return x
 
 class SquashedGaussianVanillaCNNActor(TorchActorModule):
     def __init__(self, observation_space, action_space):
         super().__init__(observation_space, action_space)
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
-        self.net = VanillaCNN(q_net=False)
+        #self.net = VanillaCNN(q_net=False)
+        self.net = CustomCNN(q_net=False)
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
         self.act_limit = act_limit
@@ -616,7 +721,8 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
 class VanillaCNNQFunction(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
-        self.net = VanillaCNN(q_net=True)
+        #self.net = VanillaCNN(q_net=True)
+        self.net = CustomCNN(q_net=True)
         self.grayscale = cfg.GRAYSCALE
 
     def forward(self, obs, act):

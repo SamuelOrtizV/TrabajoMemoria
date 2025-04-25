@@ -13,7 +13,7 @@ import tmrl.config.config_constants as cfg
 security = cfg.SECURITY  # This is fine for secure local networks. On the Internet, use "TLS" instead.
 password = cfg.PASSWORD  # This is the password defined in TmrlData/config/config.json
 
-server_ip = "127.0.0.1"  # This is the localhost IP. Change it for your public IP if you want to run on the Internet.
+server_ip = cfg.PUBLIC_IP_SERVER  # This is the localhost IP. Change it for your public IP if you want to run on the Internet.
 server_port = cfg.PORT  # On the Internet, the machine hosting the Server needs to be reachable via this port.
 
 if __name__ == "__main__":

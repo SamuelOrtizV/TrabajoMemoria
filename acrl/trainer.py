@@ -9,7 +9,7 @@ from custom_algorithms import SAC_Agent
 
 from environment import AC_ENV_CONFIG
 from memories import MemoryFull
-from custom_models import VanillaCNNActorCritic
+from custom_models import VanillaCNNActorCritic, EffNetActorCritic
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
 
