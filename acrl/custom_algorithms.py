@@ -212,7 +212,7 @@ class SAC_Agent(SpinupSacAgent):
             ret_dict["loss_entropy_coef"] = loss_alpha.detach().item()
             ret_dict["entropy_coef"] = alpha_t.item()
 
-        if amp_enabled:
-            ret_dict["mixed_precision"] = True
+        """ if amp_enabled:
+            ret_dict["mixed_precision"] = True """
 
         return ret_dict

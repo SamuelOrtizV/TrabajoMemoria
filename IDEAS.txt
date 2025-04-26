@@ -40,6 +40,7 @@ ver si quitar datos de telemetría como espacio de observación (rpms, vel, gear
 explorar hiperparametros
 
 Uso de curriculum learning para el entrenamiento:
+    -Acelerar
     -Moverse en linea recta
     -Girar una curvas abiertas en un sentido (pista ovalada)
     -Girar en curvas en ambos sentidos

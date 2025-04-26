@@ -7,10 +7,10 @@ class RewardFunction:
                  max_mistakes=10,
                  steps_to_forget=100,
                  min_nb_steps_before_failure=int(3.5 * 20),
-                 reward_speed_weight=0.1,
                  reward_track_position_weight=5,
                  reward_laps_weight=500.0,
                  penalty_low_rpms=-0.2,
+                 penalty_low_speed=-0.2,
                  penalty_backwards=-0.5,
                  penalty_tyres_out=-0.5,
                  penalty_car_damage=-2.0,
@@ -42,10 +42,10 @@ class RewardFunction:
         self.max_mistakes = max_mistakes
         self.steps_to_forget = steps_to_forget
         self.min_nb_steps_before_failure = min_nb_steps_before_failure
-        self.reward_speed_weight = reward_speed_weight
         self.reward_track_position_weight = reward_track_position_weight
         self.reward_laps_weight = reward_laps_weight
         self.penalty_low_rpms = penalty_low_rpms
+        self.penalty_low_speed = penalty_low_speed
         self.penalty_backwards = penalty_backwards
         self.penalty_tyres_out = penalty_tyres_out
         self.penalty_car_damage = penalty_car_damage
@@ -103,9 +103,11 @@ class RewardFunction:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
             mistake = True 
         if telemetry_data["car_damage"] > 0:
-            reward += self.penalty_car_damage
+            reward += self.penalty_car_damage*telemetry_data["car_damage"]
         if telemetry_data["rpms"] < self.threshold_rpms:
             reward += self.penalty_low_rpms
+        if telemetry_data["speed"] < self.threshold_speed:
+            reward += self.penalty_low_speed
         if position_difference < 0:
             reward += self.penalty_backwards
             mistake = True
