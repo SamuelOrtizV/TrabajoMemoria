@@ -85,13 +85,6 @@ class RewardFunction:
         checkpoint_difference = track_position - self.previous_checkpoint
         self.previous_position = track_position
 
-        # Reward for minimum speed, this aims to keep the car moving
-        if telemetry_data["speed"] >= self.threshold_speed:
-            reward += self.reward_speed_weight
-        else:
-            reward -= self.reward_speed_weight
-
-
         # Reward for reaching a checkpoint
         if checkpoint_difference > self.threshold_checkpoint:  # If we did progress on the track
             reward += self.reward_track_position_weight
