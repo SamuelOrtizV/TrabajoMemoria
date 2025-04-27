@@ -100,6 +100,11 @@ class RewardFunction:
             checkpoint_count = 0  # we reset the checkpoint counter
             print(f"10 Checkpoints reached: {track_position}                                               ")
 
+        # Reward for speed
+
+        if telemetry_data["speed"] > self.threshold_speed:
+            reward += telemetry_data["speed"] / 100.0
+
         # Penalizations
         if telemetry_data["tyres_out"] > 0:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
