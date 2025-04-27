@@ -94,8 +94,8 @@ class RewardFunction:
             self.previous_checkpoint = track_position  # we update the previous checkpoint
             checkpoint_count += 1  # we update the checkpoint counter
 
-        # Reward for advancing 10 checkpoints
-        if checkpoint_count >= 10:  # If we did progress on the track
+        # Reward for advancing 100 checkpoints
+        if checkpoint_count >= 100:  # If we did progress on the track
             reward += self.reward_track_position_weight * 20  # we give a reward for advancing 10 checkpoints, bigger than the sum of the previous ones
             checkpoint_count = 0  # we reset the checkpoint counter
             print(f"10 Checkpoints reached: {track_position}                                               ")
