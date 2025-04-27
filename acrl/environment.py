@@ -55,6 +55,7 @@ class AC_Interface(RealTimeGymInterface):
         self.fullscreen = cfg.ENV_CONFIG['FULL_SCREEN']
         self.initialized = False
         self.best = 0.0
+        self.ep_rew = 0.0
 
     def initialize_common(self):
         if self.gamepad:
@@ -162,6 +163,10 @@ class AC_Interface(RealTimeGymInterface):
         """
         obs must be a list of numpy arrays
         """
+        
+        print("Episode reward: ", self.ep_rew)
+        self.ep_rew = 0.0
+        
         self.reset_common()
         data = self.grab_data()
         img = self.grab_img()
@@ -220,6 +225,7 @@ class AC_Interface(RealTimeGymInterface):
         ], dtype='float32')
 
         rew, terminated = self.reward_function.compute_reward(data)
+        self.ep_rew += rew
         self.img_hist.append(img)
         imgs = np.array(list(self.img_hist))
         obs = [speed, gear, rpm, imgs]        
