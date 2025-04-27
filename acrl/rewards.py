@@ -74,11 +74,13 @@ class RewardFunction:
         reward = 0.0
         self.step_counter += 1  # step counter to enable mistake counter
         mistake = False  # flag to check if a mistake happened
+        checkpoint_count = 0
 
         # Reward for completing a lap
         if telemetry_data["laps"] > self.previous_lap:
             reward += self.reward_laps_weight
             self.previous_lap = telemetry_data["laps"]
+            checkpoint_count = 0
 
         track_position = 0.0 if telemetry_data["track_position"] >= 0.995 else telemetry_data["track_position"]
         position_difference = track_position - self.previous_position
@@ -90,6 +92,13 @@ class RewardFunction:
             reward += self.reward_track_position_weight
             print(f"Checkpoint reached: {track_position}                                               ")
             self.previous_checkpoint = track_position  # we update the previous checkpoint
+            checkpoint_count += 1  # we update the checkpoint counter
+
+        # Reward for advancing 10 checkpoints
+        if checkpoint_count >= 10:  # If we did progress on the track
+            reward += self.reward_track_position_weight * 20  # we give a reward for advancing 10 checkpoints, bigger than the sum of the previous ones
+            checkpoint_count = 0  # we reset the checkpoint counter
+            print(f"10 Checkpoints reached: {track_position}                                               ")
 
         # Penalizations
         if telemetry_data["tyres_out"] > 0:
