@@ -27,3 +27,7 @@ trained_models/
 supervised learning/
 
 env/
+
+__pycache__/
+
+acrl/__pycache__/
