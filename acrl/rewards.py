@@ -110,13 +110,13 @@ class RewardFunction:
             reward += self.penalty_low_rpms/2
         elif telemetry_data["rpms"] < self.threshold_rpms:
             reward += self.penalty_low_rpms
-        if telemetry_data["speed"] < self.threshold_speed*2:
-            reward += self.penalty_low_speed/2
-        elif telemetry_data["speed"] < self.threshold_speed:
-            reward += self.penalty_low_speed
-        elif telemetry_data["speed"] < 1.0:  # If the car is not moving
+        if telemetry_data["speed"] < 1.0:  # If the car is not moving
             reward += self.penalty_low_speed*5
             mistake = True 
+        elif telemetry_data["speed"] < self.threshold_speed*2:
+            reward += self.penalty_low_speed/2
+        elif telemetry_data["speed"] < self.threshold_speed:
+            reward += self.penalty_low_speed        
         if position_difference < 0:
             reward += self.penalty_backwards
             mistake = True
