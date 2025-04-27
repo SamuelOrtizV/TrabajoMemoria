@@ -123,7 +123,7 @@ class AC_Interface(RealTimeGymInterface):
                     actions.append('l')
                 apply_control(actions) """
             
-        print(f"Best lap: {self.best}  Gas Brake Turn: {np.round(control, 2)} ", end="\r")
+        print(f"Best lap: {self.best}  Gas Brake Turn: {np.round(control, 2)}                        ", end="\r")
 
     def grab_data(self):
         """
@@ -151,6 +151,9 @@ class AC_Interface(RealTimeGymInterface):
             self.initialize()
         self.send_control(self.get_default_action())
         reset_race(cfg.SLEEP_TIME_AT_RESET)
+        # Arrancar el auto
+        self.send_control(np.array([1.0, 0.0, 0.0], dtype='float32'))  # gas, brake, steering
+        time.sleep(2.5)  # wait for the car to start moving
         # must be long enough for image to be refreshed
 
     def reset(self, seed=None, options=None):
