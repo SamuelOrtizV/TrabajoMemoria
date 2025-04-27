@@ -96,9 +96,9 @@ class RewardFunction:
 
         # Reward for advancing 100 checkpoints
         if checkpoint_count >= 100:  # If we did progress on the track
-            reward += self.reward_track_position_weight * 200  # we give a reward for advancing 10 checkpoints, bigger than the sum of the previous ones
+            reward += self.reward_track_position_weight * 100  # we give a reward for advancing 10 checkpoints, bigger than the sum of the previous ones
             checkpoint_count = 0  # we reset the checkpoint counter
-            print(f"10 Checkpoints reached: {track_position}                                               ")
+            print(f"100 Checkpoints reached: {track_position}                                               ")
 
         # Reward for speed
 
@@ -109,20 +109,18 @@ class RewardFunction:
         if telemetry_data["tyres_out"] > 0:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
             mistake = True 
-        if telemetry_data["car_damage"] > 0:
-            reward += self.penalty_car_damage*telemetry_data["car_damage"]
         if telemetry_data["rpms"] < self.threshold_rpms*2:
             reward += self.penalty_low_rpms/2
         elif telemetry_data["rpms"] < self.threshold_rpms:
             reward += self.penalty_low_rpms
         if telemetry_data["speed"] < self.threshold_speed:  # If the car is not moving
-            reward += self.penalty_low_speed*50
-            mistake = True 
-        elif telemetry_data["speed"] < self.threshold_speed*2:
-            reward += self.penalty_low_speed        
+            reward += self.penalty_low_speed
+            mistake = True       
         if position_difference < 0:
             reward += self.penalty_backwards
             mistake = True
+        if telemetry_data["car_damage"] > 0:
+            reward = self.penalty_car_damage*telemetry_data["car_damage"]
 
         # Termination condition
         if mistake:
