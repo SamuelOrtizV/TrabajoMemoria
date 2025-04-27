@@ -16,7 +16,7 @@ class SAC_Agent(SpinupSacAgent):
     
     def train(self, batch):
 
-        o, a, r, o2, d, _ = batch
+        o, a, r, o2, d, _ = batch # Observations, actions, rewards, next observations, done flags, and info dicts
 
         # Flag to track if we're using mixed precision
         amp_enabled = self.mixed_precision and torch.cuda.is_available()

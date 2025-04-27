@@ -103,7 +103,7 @@ class RewardFunction:
         # Reward for speed
 
         if telemetry_data["speed"] > self.threshold_speed:
-            reward += telemetry_data["speed"] / 100.0
+            reward += telemetry_data["speed"] / 400.0
 
         # Penalizations
         if telemetry_data["tyres_out"] > 0:
