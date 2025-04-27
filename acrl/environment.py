@@ -164,7 +164,15 @@ class AC_Interface(RealTimeGymInterface):
         obs must be a list of numpy arrays
         """
         
-        print(f"Episode reward: {self.ep_rew.sum() if len(self.ep_rew) > 0 else 0.0} Min reward: {self.ep_rew.min() if len(self.ep_rew) > 0 else 0.0} Max reward: {self.ep_rew.max() if len(self.ep_rew) > 0 else 0.0} Average reward: {self.ep_rew.mean() if len(self.ep_rew) > 0 else 0.0} \n")
+        if len(self.ep_rew) > 0:
+            # Calcula estadísticas del episodio anterior
+            total_reward = sum(self.ep_rew)
+            min_reward = min(self.ep_rew)
+            max_reward = max(self.ep_rew)
+            avg_reward = total_reward / len(self.ep_rew)
+            print(f"Episode reward: {total_reward:.2f} Min reward: {min_reward:.2f} Max reward: {max_reward:.2f} Average reward: {avg_reward:.2f} \n")
+        else:
+            print("No rewards recorded for the previous episode.\n")
         self.ep_rew = []
         
         self.reset_common()
