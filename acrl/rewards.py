@@ -161,3 +161,5 @@ class RewardFunction:
         self.previous_checkpoint = 0.0
         self.previous_position = 0.0
         self.previous_lap = 0
+
+        self.car_damage = 0.0
