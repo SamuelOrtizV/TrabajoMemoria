@@ -28,6 +28,9 @@ supervised learning/
 
 env/
 
+dummydrone_test/
+
 __pycache__/
 
 acrl/__pycache__/
+
