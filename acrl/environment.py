@@ -126,7 +126,7 @@ class AC_Interface(RealTimeGymInterface):
             
         data = self.grab_data()
             
-        print(f"PR: {self.best} TP: {data["track_position"]} Speed: {data["speed"]}  Gas Brake Turn: {np.round(control, 2)}                        ", end="\r")
+        print(f"PR: {self.best} TP: {data["track_position"]} Speed: {data["speed"]} RPM: {data["rpms"]} Gas Brake Turn: {np.round(control, 2)}                        ", end="\r")
 
     def grab_data(self):
         """

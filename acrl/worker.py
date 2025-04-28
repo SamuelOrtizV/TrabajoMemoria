@@ -35,7 +35,12 @@ actor_module_cls = SquashedGaussianVanillaCNNActor
 # It is designed to work with the SAC algorithm.
 #actor_module_cls = partial(SquashedGaussianVanillaCNNActor)
 
-model_history = -1  # let us not save a model history.
+""" model_path_history = cfg.WEIGHTS_FOLDER / cfg.RUN_NAME
+
+# check if the model path exists if not create it
+if not model_path_history.exists():
+    model_path_history.mkdir(parents=True, exist_ok=True) """
+
 
 # Instantiation of the RolloutWorker object:
 
@@ -47,8 +52,7 @@ if __name__ == "__main__":
         device= "cuda" if cfg.CUDA_INFERENCE else "cpu",  # True if CUDA, False if CPU (rollout worker)
         max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE,
         server_ip=cfg.SERVER_IP_FOR_WORKER,
-        # model_path_history=model_path_history,  # not used when model_history is -1
-        model_history=model_history,
+        #model_path_history=model_path_history,  # not used when model_history is -1
         crc_debug=CRC_DEBUG)
 
     # Note: at this point, the RolloutWorker is not collecting samples yet.
