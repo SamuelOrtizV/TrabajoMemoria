@@ -90,7 +90,7 @@ class RewardFunction:
         # Reward for reaching a checkpoint
         if checkpoint_difference > self.threshold_checkpoint:  # If we did progress on the track
             reward += self.reward_track_position_weight
-            print(f"Checkpoint reached: {track_position}                                               ")
+            print(f"Checkpoint reached: {track_position}                                                                      ")
             self.previous_checkpoint = track_position  # we update the previous checkpoint
             checkpoint_count += 1  # we update the checkpoint counter
 
@@ -98,7 +98,7 @@ class RewardFunction:
         if checkpoint_count >= 100:  # If we did progress on the track
             reward += self.reward_track_position_weight * 100  # we give a reward for advancing 10 checkpoints, bigger than the sum of the previous ones
             checkpoint_count = 0  # we reset the checkpoint counter
-            print(f"100 Checkpoints reached: {track_position}                                               ")
+            print(f"100 Checkpoints reached: {track_position}                                                                  ")
 
         # Reward for speed
 
@@ -107,8 +107,9 @@ class RewardFunction:
 
         # Penalizations
         if telemetry_data["tyres_out"] > 0:
-            reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
-            mistake = True 
+            #reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
+            #mistake = True
+            pass 
         if telemetry_data["rpms"] < self.threshold_rpms*2:
             reward += self.penalty_low_rpms/2
         elif telemetry_data["rpms"] < self.threshold_rpms:
