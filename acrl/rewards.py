@@ -139,6 +139,9 @@ class RewardFunction:
 
         terminated = terminated or telemetry_data["car_damage"] > 0  # The episode ends if the car is damaged
 
+        max_reward = max(1, abs(reward))
+        reward = reward / max_reward
+
         return reward, terminated
 
     def reset(self):
