@@ -1,36 +1,18 @@
-# Ignorar la carpeta de datos
-datasets/
-
-# Ignorar la carpeta de prueba
-test_dataset/
-
-# Ignorar la carpeta de datos crudos
-raw_data/
-
-# Ignorar la carpeta de logs
-runs/
-
-# Ignorar la carpeta de modelos
-models/
-
-# Ignorar la carpeta de datos balanceados
-balanced_data/
-
-# Ignorar la carpeta de predicciones
-predictions csv/
-
 # Ignorar la carpeta de scripts antiguos
 old_scripts/
-
-trained_models/
 
 supervised learning/
 
 env/
 
+runs/
+
 dummydrone_test/
 
 __pycache__/
 
-acrl/__pycache__/
+.venv/
 
+acrl/__pycache__/
+ 
+ 
