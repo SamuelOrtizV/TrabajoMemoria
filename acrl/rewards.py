@@ -61,6 +61,8 @@ class RewardFunction:
         self.previous_position = 0.0
         self.previous_lap = 0
 
+        self.car_damage = 0.0
+
     def compute_reward(self, telemetry_data):
         """
         Computes the current reward given the position pos
@@ -120,9 +122,12 @@ class RewardFunction:
         if position_difference < 0:
             reward += self.penalty_backwards
             mistake = True
-        if telemetry_data["car_damage"] > 0:
-            reward = self.penalty_car_damage*telemetry_data["car_damage"]
-
+        """ if telemetry_data["car_damage"] > 0:
+            reward = self.penalty_car_damage*telemetry_data["car_damage"] """
+        if telemetry_data["car_damage"] > self.car_damage:
+            
+            reward += self.penalty_car_damage * (telemetry_data["car_damage"] - self.car_damage)
+            self.car_damage = telemetry_data["car_damage"]
         # Termination condition
         if mistake:
             # If mistake happens for too many steps, the episode terminates
@@ -137,7 +142,7 @@ class RewardFunction:
                 self.mistake_counter = 0
                 self.no_mistake_counter = 0
 
-        terminated = terminated or telemetry_data["car_damage"] > 0  # The episode ends if the car is damaged
+        #terminated = terminated or telemetry_data["car_damage"] > 0  # The episode ends if the car is damaged
 
         max_reward = max(1, abs(reward))
         reward = reward / max_reward
