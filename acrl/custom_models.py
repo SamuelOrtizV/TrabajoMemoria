@@ -618,12 +618,13 @@ class VanillaCNN(Module):
         return x
 
 class CustomCNN(Module):
-    def __init__(self, q_net):
+    def __init__(self, q_net, action_space_size):
         super(CustomCNN, self).__init__()
         self.q_net = q_net
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
         self.hist_len = cfg.IMG_HIST_LEN
         self.num_channels = 1 if cfg.GRAYSCALE else 3
+        self.action_space_size = action_space_size
 
         # Capas convolucionales con EfficientNet
         self.cnn = effnetv2_s(
@@ -634,7 +635,8 @@ class CustomCNN(Module):
 
         # Calcular las características planas de salida
         self.flat_features = 256  # Salida de EfficientNet
-        self.mlp_input_features = self.flat_features + 9 if self.q_net else self.flat_features + 6
+        self.mlp_input_features = self.flat_features + 3 + self.action_space_size*2 if self.q_net else self.flat_features + 3 + self.action_space_size
+        #self.mlp_input_features = self.flat_features + 9 if self.q_net else self.flat_features + 6 # Si se usa espacio de accion de 3
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
 
@@ -666,7 +668,7 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
         #self.net = VanillaCNN(q_net=False)
-        self.net = CustomCNN(q_net=False)
+        self.net = CustomCNN(q_net=False, action_space_size=dim_act)
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
         self.act_limit = act_limit
@@ -722,7 +724,8 @@ class VanillaCNNQFunction(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
         #self.net = VanillaCNN(q_net=True)
-        self.net = CustomCNN(q_net=True)
+        action_space_size = action_space.shape[0]
+        self.net = CustomCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
 
     def forward(self, obs, act):
