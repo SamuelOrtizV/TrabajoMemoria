@@ -56,6 +56,7 @@ class AC_Interface(RealTimeGymInterface):
         self.initialized = False
         self.best = 0.0
         self.ep_rew = []
+        self.action = None
 
     def initialize_common(self):
         if self.gamepad:
@@ -80,15 +81,19 @@ class AC_Interface(RealTimeGymInterface):
                                                 min_nb_steps_before_failure=cfg.REWARD_CONFIG['MIN_STEPS'],
                                                 reward_track_position_weight=cfg.REWARD_CONFIG['TRACK_POS_WEIGHT'],
                                                 reward_laps_weight=cfg.REWARD_CONFIG['LAPS_WEIGHT'],
+                                                start_up_multiplier=cfg.REWARD_CONFIG['START_UP_MULTIPLIER'],
                                                 penalty_low_rpms=cfg.REWARD_CONFIG['PENALTY_LOW_RPMS'],
                                                 penalty_low_speed=cfg.REWARD_CONFIG['PENALTY_LOW_SPEED'],
                                                 penalty_backwards=cfg.REWARD_CONFIG['PENALTY_BACKWARDS'],
                                                 penalty_tyres_out=cfg.REWARD_CONFIG['PENALTY_TYRES_OUT'],
                                                 penalty_car_damage=cfg.REWARD_CONFIG['PENALTY_CAR_DAMAGE'],
+                                                penalty_non_smooth_actions=cfg.REWARD_CONFIG['PENALTY_NON_SMOOTH_ACTIONS'],
                                                 threshold_speed=cfg.REWARD_CONFIG['THRESHOLD_SPEED'],
                                                 threshold_rpms=cfg.REWARD_CONFIG['THRESHOLD_RPMS'],
-                                                threshold_checkpoint=cfg.REWARD_CONFIG['THRESHOLD_CHECKPOINT']
-                                              )
+                                                threshold_checkpoint=cfg.REWARD_CONFIG['THRESHOLD_CHECKPOINT'],
+                                                threshold_smooth_actions=cfg.REWARD_CONFIG['THRESHOLD_SMOOTH_ACTIONS']
+                                                )
+                                              
 
     def initialize(self):
         self.initialize_common()
@@ -109,6 +114,7 @@ class AC_Interface(RealTimeGymInterface):
         if self.gamepad:
             if control is not None:
                 self.controller.control_gamepad(control)
+                self.action = control
         else:
             pass
             # Por implementar para AC
@@ -126,7 +132,7 @@ class AC_Interface(RealTimeGymInterface):
             
         data = self.grab_data()
             
-        print(f"PR: {self.best} TP: {data["track_position"]} Speed: {data["speed"]} RPM: {data["rpms"]} Gas Brake Turn: {np.round(control, 2)}                        ", end="\r")
+        print(f"PR: {self.best} TP: {data["track_position"]} Speed: {data["speed"]} RPM: {data["rpms"]} Gas-Brake Turn: {np.round(control, 2)}                        ", end="\r")
 
     def grab_data(self):
         """
@@ -155,8 +161,8 @@ class AC_Interface(RealTimeGymInterface):
         self.send_control(self.get_default_action())
         reset_race(cfg.SLEEP_TIME_AT_RESET)
         # Arrancar el auto
-        self.send_control(np.array([1.0, 0.0, 0.0], dtype='float32'))  # gas, brake, steering
-        time.sleep(2.5)  # wait for the car to start moving
+        """ self.send_control(np.array([1.0, 0.0, 0.0], dtype='float32'))  # gas, brake, steering
+        time.sleep(2.5)  # wait for the car to start moving """
         # must be long enough for image to be refreshed
 
     def reset(self, seed=None, options=None):
@@ -232,7 +238,7 @@ class AC_Interface(RealTimeGymInterface):
             data["rpms"],
         ], dtype='float32')
 
-        rew, terminated = self.reward_function.compute_reward(data)
+        rew, terminated = self.reward_function.compute_reward(data, self.action)
         self.ep_rew.append(rew)
         self.img_hist.append(img)
         imgs = np.array(list(self.img_hist))
@@ -275,13 +281,13 @@ class AC_Interface(RealTimeGymInterface):
         """
         must return a Box
         """
-        return spaces.Box(low=-1.0, high=1.0, shape=(3, ))
+        return spaces.Box(low=-1.0, high=1.0, shape=(2, )) # Cambiar a (3,) para gas brake y steering
 
     def get_default_action(self):
         """
         initial action at episode start
         """
-        return np.array([0.0, 0.0, 0.0], dtype='float32')
+        return np.array([0.0, 0.0], dtype='float32') # Cambiar a [0.0, 0.0, 0.0] para gas brake y steering
     
 # rtgym configuration ductionary:
 

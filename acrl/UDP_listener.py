@@ -48,7 +48,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
         # Redondear los valores a 2 decimales
         speed = round(speed, 2)
         rpms = round(rpms, 2)
-        track_position = round(track_position, 4)
+        track_position = round(track_position, 5)
         car_damage = round(car_damage, 2)
         
         # Almacenar los valores en un diccionario

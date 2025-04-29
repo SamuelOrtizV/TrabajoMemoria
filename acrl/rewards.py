@@ -9,14 +9,17 @@ class RewardFunction:
                  min_nb_steps_before_failure=int(3.5 * 20),
                  reward_track_position_weight=5,
                  reward_laps_weight=500.0,
+                 start_up_multiplier=0.1,
                  penalty_low_rpms=-0.2,
                  penalty_low_speed=-0.2,
                  penalty_backwards=-0.5,
                  penalty_tyres_out=-0.5,
                  penalty_car_damage=-2.0,
+                 penalty_non_smooth_actions=-0.01,
                  threshold_speed=10.0,
                  threshold_rpms=2000.0,
-                 threshold_checkpoint=0.001                              
+                 threshold_checkpoint=0.001,
+                 threshold_smooth_actions=0.1                              
                  ):
         """
         Instantiates a reward function for AC
@@ -44,14 +47,17 @@ class RewardFunction:
         self.min_nb_steps_before_failure = min_nb_steps_before_failure
         self.reward_track_position_weight = reward_track_position_weight
         self.reward_laps_weight = reward_laps_weight
+        self.start_up_multiplier = start_up_multiplier
         self.penalty_low_rpms = penalty_low_rpms
         self.penalty_low_speed = penalty_low_speed
         self.penalty_backwards = penalty_backwards
         self.penalty_tyres_out = penalty_tyres_out
         self.penalty_car_damage = penalty_car_damage
+        self.penalty_non_smooth_actions = penalty_non_smooth_actions
         self.threshold_speed = threshold_speed
         self.threshold_rpms = threshold_rpms
         self.threshold_checkpoint = threshold_checkpoint
+        self.threshold_smooth_actions = threshold_smooth_actions
 
         self.step_counter = 0
         self.mistake_counter = 0
@@ -63,7 +69,9 @@ class RewardFunction:
 
         self.car_damage = 0.0
 
-    def compute_reward(self, telemetry_data):
+        self.last_action = None  # last action taken by the car
+
+    def compute_reward(self, telemetry_data, action):
         """
         Computes the current reward given the position pos
         Args:
@@ -108,15 +116,30 @@ class RewardFunction:
             reward += telemetry_data["speed"] / 400.0
 
         # Penalizations
+        if self.last_action is not None:
+            gas_brake_diff = abs(action[0] - self.last_action[0])
+            wheel_diff = abs(action[1] - self.last_action[1])
+
+            if gas_brake_diff > self.threshold_smooth_actions or wheel_diff > self.threshold_smooth_actions:
+                reward += self.penalty_non_smooth_actions
+            
+            self.last_action = action  # we update the last action taken by the car
+        else:
+            self.last_action = action
+
         if telemetry_data["tyres_out"] > 0:
             #reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
             #mistake = True
             pass 
+
+        if telemetry_data["gear"] == 1:
+            reward += action[0] * self.start_up_multiplier  # we give a reward for accelerating when starting from 0
+
         if telemetry_data["rpms"] < self.threshold_rpms*2:
             reward += self.penalty_low_rpms/2
         elif telemetry_data["rpms"] < self.threshold_rpms:
             reward += self.penalty_low_rpms
-        if telemetry_data["speed"] < self.threshold_speed:  # If the car is not moving
+        if telemetry_data["speed"] < self.threshold_speed and telemetry_data["gear"] > 1:  # If the car is not moving
             reward += self.penalty_low_speed
             mistake = True       
         if position_difference < 0:
@@ -124,8 +147,7 @@ class RewardFunction:
             mistake = True
         """ if telemetry_data["car_damage"] > 0:
             reward = self.penalty_car_damage*telemetry_data["car_damage"] """
-        if telemetry_data["car_damage"] > self.car_damage:
-            
+        if telemetry_data["car_damage"] > self.car_damage:            
             reward += self.penalty_car_damage * (telemetry_data["car_damage"] - self.car_damage)
             self.car_damage = telemetry_data["car_damage"]
         # Termination condition
@@ -163,3 +185,4 @@ class RewardFunction:
         self.previous_lap = 0
 
         self.car_damage = 0.0
+        self.last_action = None

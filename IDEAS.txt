@@ -39,6 +39,10 @@ ver si quitar datos de telemetría como espacio de observación (rpms, vel, gear
 
 explorar hiperparametros
 
+recompensas por controles dados, penalizar cambios bruscos
+
+Si se usan colores, ver tema de normalización
+
 Uso de curriculum learning para el entrenamiento:
     -Acelerar
     -Moverse en linea recta
