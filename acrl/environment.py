@@ -109,7 +109,7 @@ class AC_Interface(RealTimeGymInterface):
         Applies the action given by the RL policy
         If control is None, does nothing (e.g. to record)
         Args:
-            control: np.array: [gas,brake,steering] values between -1.0 and 1.0
+            control: np.array: [gas-brake,steering] values between -1.0 and 1.0
         """
         if self.gamepad:
             if control is not None:

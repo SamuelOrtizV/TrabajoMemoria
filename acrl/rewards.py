@@ -148,7 +148,7 @@ class RewardFunction:
         """ if telemetry_data["car_damage"] > 0:
             reward = self.penalty_car_damage*telemetry_data["car_damage"] """
         if telemetry_data["car_damage"] > self.car_damage:            
-            reward += self.penalty_car_damage * (telemetry_data["car_damage"] - self.car_damage)
+            reward += -1 #self.penalty_car_damage * (telemetry_data["car_damage"] - self.car_damage)
             self.car_damage = telemetry_data["car_damage"]
         # Termination condition
         if mistake:

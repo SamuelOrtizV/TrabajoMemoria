@@ -92,6 +92,9 @@ class SAC_Agent(SpinupSacAgent):
             # Entropy-regularized policy loss
             loss_pi = (alpha_t * logp_pi - q_pi).mean()
 
+            if loss_pi < 0:
+                logging.debug(f"Negative loss_pi: {loss_pi.item()} Alpha: {alpha_t.item()} Logp_pi: {logp_pi.mean().item()} Q_pi: {q_pi.mean().item()}")
+                
         # Update actor with mixed precision if enabled
         self.pi_optimizer.zero_grad()
         if amp_enabled:
