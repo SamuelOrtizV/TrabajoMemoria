@@ -756,21 +756,34 @@ class VanillaCNNQFunction(nn.Module):
         action_space_size = action_space.shape[0]
         self.net = CustomCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
+        self.act_buf_len = cfg.ACT_BUF_LEN
 
     def forward(self, obs, act):
 
         if self.grayscale:
             x = (*obs, act)
         else:
-            speed, gear, rpm, images, prev_act = obs
-            batch_size, hist_len, height, width, channels = images.shape
+            if self.act_buf_len == 1:                
+                speed, gear, rpm, images, prev_act = obs
+                batch_size, hist_len, height, width, channels = images.shape
 
-            # Reorganiza las dimensiones: combina historial y canales
-            images = images.permute(0, 1, 4, 2, 3)  # Cambia a (batch_size, hist_len, channels, height, width)
-            images = images.reshape(batch_size, hist_len * channels, height, width)  # Combina historial y canales
+                # Reorganiza las dimensiones: combina historial y canales
+                images = images.permute(0, 1, 4, 2, 3)  # Cambia a (batch_size, hist_len, channels, height, width)
+                images = images.reshape(batch_size, hist_len * channels, height, width)  # Combina historial y canales
 
-            # Pasa las imágenes reorganizadas a la red convolucional
-            x = (speed, gear, rpm, images, prev_act, act)
+                # Pasa las imágenes reorganizadas a la red convolucional
+                x = (speed, gear, rpm, images, prev_act, act)
+            elif self.act_buf_len == 2:
+                speed, gear, rpm, images, prev_act1, prev_act2 = obs
+                batch_size, hist_len, height, width, channels = images.shape
+
+                # Reorganiza las dimensiones: combina historial y canales
+                images = images.permute(0, 1, 4, 2, 3)
+                images = images.reshape(batch_size, hist_len * channels, height, width)
+                # Pasa las imágenes reorganizadas a la red convolucional
+                x = (speed, gear, rpm, images, prev_act1, prev_act2, act)
+            else:
+                raise ValueError(f"Unsupported act_buf_len: {self.act_buf_len}. Try 1 or 2. If you want to use more, you need to modify the code.")
 
         
         q = self.net(x)

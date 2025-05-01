@@ -4,10 +4,11 @@ from tmrl.networking import Trainer
 from tmrl.util import partial
 from tmrl.envs import GenericGymEnv
 import tmrl.config.config_constants as cfg
+from tmrl.config.config_objects import CONFIG_DICT
 from tmrl.training_offline import TorchTrainingOffline
 from custom_algorithms import SAC_Agent
 
-from environment import AC_ENV_CONFIG
+from environment import AC_Interface
 from memories import MemoryFull
 from custom_models import VanillaCNNActorCritic, EffNetActorCritic
 # Set this to True only for debugging your pipeline.
@@ -15,9 +16,11 @@ CRC_DEBUG = False
 
 # === Environment ======================================================================================================
 
+CONFIG_DICT["interface"] = AC_Interface
+
 # rtgym interface:
 
-my_rtgym_config = AC_ENV_CONFIG
+my_rtgym_config = CONFIG_DICT  # AC_ENV_CONFIG
 
 # Environment class:
 

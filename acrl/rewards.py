@@ -129,7 +129,7 @@ class RewardFunction:
 
         if telemetry_data["tyres_out"] > 0:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
-            mistake = True 
+            #mistake = True 
 
         if telemetry_data["gear"] == 1:
             reward += action[0] * self.start_up_multiplier  # we give a reward for accelerating when starting from 0
