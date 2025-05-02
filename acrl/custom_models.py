@@ -718,8 +718,11 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         mu = self.mu_layer(net_out)
         log_std = self.log_std_layer(net_out)
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
+        #std = F.softplus(log_std) + EPSILON # Alternativa
         std = torch.exp(log_std)
-
+        std = torch.clamp(std, EPSILON)  # Clamping std to avoid numerical issues
+        std = torch.nan_to_num(std, nan=1.0, posinf=1.0, neginf=1.0)  # Reemplaza NaN e infinitos
+        
         pi_distribution = Normal(mu, std)
         if test:
             pi_action = mu

@@ -127,9 +127,9 @@ class RewardFunction:
         else:
             self.last_action = action
 
-        if telemetry_data["tyres_out"] > 0:
+        """ if telemetry_data["tyres_out"] > 0:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
-            #mistake = True 
+            #mistake = True  """
 
         if telemetry_data["gear"] == 1:
             reward += action[0] * self.start_up_multiplier  # we give a reward for accelerating when starting from 0
@@ -163,7 +163,7 @@ class RewardFunction:
                 self.mistake_counter = 0
                 self.no_mistake_counter = 0
 
-        terminated = terminated or telemetry_data["car_damage"] > 25  # The episode ends if the car is damaged
+        #terminated = terminated or telemetry_data["car_damage"] > 25  # The episode ends if the car is damaged
 
         max_reward = max(1, abs(reward))
         reward = reward / max_reward
