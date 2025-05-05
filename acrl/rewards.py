@@ -164,7 +164,7 @@ class RewardFunction:
             reward += self.penalty_low_rpms
 
         # Penalty for low speed
-        if telemetry_data["speed"] < self.threshold_speed and telemetry_data["gear"] > 1:  # If the car is not moving
+        if telemetry_data["speed"] < self.threshold_speed: # and telemetry_data["gear"] > 1:  # If the car is not moving
             reward += self.penalty_low_speed
             mistake = True   
 
