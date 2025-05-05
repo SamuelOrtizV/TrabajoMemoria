@@ -38,8 +38,6 @@ trackPosition = 0
 tyresOut = 0
 carDamage = 0
 filter = 0.2
-velocity = [0,0,0]
-accG = [0,0,0]
 
 class SpeedIndicator:
     def __init__(self, app, x, y, name):
@@ -121,7 +119,7 @@ class CarDamageIndicator: # Recibe un array de length 5 con los valores de daño
 
 def acMain(ac_version):
 
-    global appWindow, carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage, velocity, accG
+    global appWindow, carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage
 
     appWindow = ac.newApp(" ")
     #ac.setSize(appWindow, 300, 240)
@@ -140,23 +138,22 @@ def acMain(ac_version):
     carDamage = CarDamageIndicator(appWindow, 20, 200, "Car Damage:") """
     
     ac.log("Hello from Python!")
-    log_message = "Car Damage: {}, RPMs: {}, Gear: {}, TyresOut: {}".format(max(info.physics.carDamage), info.physics.rpms, info.physics.gear, info.physics.numberOfTyresOut)
+    log_message = "Car Damage: {}, RPMs: {}, Gear: {}, TyresOut: {}, accG: {}".format(max(info.physics.carDamage), info.physics.rpms, info.physics.gear, info.physics.numberOfTyresOut, [info.physics.accG[0], info.physics.accG[1], info.physics.accG[2]])
     ac.log(log_message)
     ac.addRenderCallback(appWindow, onFormRender)
     return " "
 
 def onFormRender(deltaT):
-    global carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage, velocity, accG
+    global carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage
 
     # Obtener la velocidad en km/h
     velocidad = ac.getCarState(0, acsys.CS.SpeedKMH)
     #carSpeed.setCurrentValue(velocidad)
 
-    # Obtenr velocidad relativa a cada eje
-    vel_vector = ac.getCarState(0, acsys.CS.Velocity)
-
     # Obtener la aceleración del auto en Gs
-    acc_vector = info.physics.accG
+    acc_x = info.physics.accG[0] # Aceleración en el eje izquierda - derecha del auto
+    acc_y = info.physics.accG[1] # Aceleración en el eje arriba - abajo del auto
+    acc_z = info.physics.accG[2] # Aceleración en el eje adelante - atrás del auto
 
     # Obtener las revoluciones por minuto
     rpms = ac.getCarState(0, acsys.CS.RPM)
@@ -187,8 +184,8 @@ def onFormRender(deltaT):
             ac.log("Error al obtener el daño del auto: {}".format(e))
 
     # Crear el mensaje con los datos
-    message = "Speed: {}, RPMs: {}, Gear: {}, Laps: {}, Track Position: {}, Tyres Out: {}, Car Damage: {}, Vel Vector: {}, Acc Vector: {}".format(
-        velocidad, rpms, gear, vueltas, posicion, ruedas_fuera, max(damage), vel_vector, acc_vector
+    message = "Speed: {}, RPMs: {}, Gear: {}, Laps: {}, Track Position: {}, Tyres Out: {}, Car Damage: {}, Acc X: {}".format(
+        velocidad, rpms, gear, vueltas, posicion, ruedas_fuera, max(damage), acc_x
     )
 
     # Enviar el mensaje a través del socket
