@@ -132,9 +132,9 @@ class RewardFunction:
         if progress > 0.0:  # If we did progress on the track
             reward += self.reward_progress
 
-        # Reward for speed
+        """ # Reward for speed
         if telemetry_data["speed"] > self.threshold_speed:
-            reward += telemetry_data["speed"] / 400.0
+            reward += telemetry_data["speed"] / 400.0 """
 
         # ----------------------PENALTIES---------------------------
 
@@ -163,8 +163,8 @@ class RewardFunction:
         if telemetry_data["rpms"] < self.threshold_rpms:
             reward += self.penalty_low_rpms
 
-        # Penalty for low speed
-        if telemetry_data["speed"] < self.threshold_speed: # and telemetry_data["gear"] > 1:  # If the car is not moving
+        # Penalty for low speed or zero progress
+        if telemetry_data["speed"] < self.threshold_speed or progress == 0: # and telemetry_data["gear"] > 1:  # If the car is not moving
             reward += self.penalty_low_speed
             mistake = True   
 
@@ -179,7 +179,7 @@ class RewardFunction:
             self.car_damage = telemetry_data["car_damage"]
 
         # Penalty for continuous collision
-        if collision:
+        if collision and telemetry_data["car_damage"] > 0:
             reward += self.penalty_collision
             #mistake = True
 
