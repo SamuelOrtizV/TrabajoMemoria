@@ -86,7 +86,7 @@ class RewardFunction:
         self.mistake_counter = 0
         self.no_mistake_counter = 0
 
-        self.previous_checkpoint = 0.0
+        self.previous_checkpoint = None
         self.previous_lap = 0
 
         self.car_damage = 0.0
@@ -110,9 +110,11 @@ class RewardFunction:
         self.step_counter += 1  # step counter to enable mistake counter
         mistake = False  # flag to check if a mistake happened
         collision = self.collision_detection(telemetry_data, action)
+
         track_position = 0.0 if telemetry_data["track_position"] >= 0.995 else telemetry_data["track_position"]
         self.position_buffer.append(track_position)  # we add the current position to the buffer
         progress = self.position_buffer[-1] - self.position_buffer[0]
+        self.previous_checkpoint = track_position if self.previous_checkpoint is None else self.previous_checkpoint
         checkpoint_difference = track_position - self.previous_checkpoint
 
         # ----------------------REWARDS---------------------------
@@ -246,7 +248,7 @@ class RewardFunction:
         self.mistake_counter = 0
         self.no_mistake_counter = 0
         
-        self.previous_checkpoint = 0.0
+        self.previous_checkpoint = None
         self.previous_lap = 0
 
         self.car_damage = 0.0
