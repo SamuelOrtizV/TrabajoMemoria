@@ -38,6 +38,8 @@ trackPosition = 0
 tyresOut = 0
 carDamage = 0
 filter = 0.2
+velocity = [0,0,0]
+accG = [0,0,0]
 
 class SpeedIndicator:
     def __init__(self, app, x, y, name):
@@ -119,7 +121,7 @@ class CarDamageIndicator: # Recibe un array de length 5 con los valores de daño
 
 def acMain(ac_version):
 
-    global appWindow, carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage
+    global appWindow, carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage, velocity, accG
 
     appWindow = ac.newApp(" ")
     #ac.setSize(appWindow, 300, 240)
@@ -144,11 +146,17 @@ def acMain(ac_version):
     return " "
 
 def onFormRender(deltaT):
-    global carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage
+    global carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage, velocity, accG
 
     # Obtener la velocidad en km/h
     velocidad = ac.getCarState(0, acsys.CS.SpeedKMH)
     #carSpeed.setCurrentValue(velocidad)
+
+    # Obtenr velocidad relativa a cada eje
+    vel_vector = ac.getCarState(0, acsys.CS.Velocity)
+
+    # Obtener la aceleración del auto en Gs
+    acc_vector = info.physics.accG
 
     # Obtener las revoluciones por minuto
     rpms = ac.getCarState(0, acsys.CS.RPM)
@@ -179,8 +187,8 @@ def onFormRender(deltaT):
             ac.log("Error al obtener el daño del auto: {}".format(e))
 
     # Crear el mensaje con los datos
-    message = "Speed: {}, RPMs: {}, Gear: {}, Laps: {}, Track Position: {}, Tyres Out: {}, Car Damage: {}".format(
-        velocidad, rpms, gear, vueltas, posicion, ruedas_fuera, max(damage)
+    message = "Speed: {}, RPMs: {}, Gear: {}, Laps: {}, Track Position: {}, Tyres Out: {}, Car Damage: {}, Vel Vector: {}, Acc Vector: {}".format(
+        velocidad, rpms, gear, vueltas, posicion, ruedas_fuera, max(damage), vel_vector, acc_vector
     )
 
     # Enviar el mensaje a través del socket

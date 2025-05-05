@@ -83,4 +83,4 @@ if __name__ == "__main__":
     # Note: at this point, the RolloutWorker is not collecting samples yet.
     # Nevertheless, it connects to the Server.
 
-    my_worker.run(test_episode_interval=10, verbose=True) # This will make the worker collect samples and send them to the server.
+    my_worker.run(test_episode_interval=100, verbose=True) # This will make the worker collect samples and send them to the server.

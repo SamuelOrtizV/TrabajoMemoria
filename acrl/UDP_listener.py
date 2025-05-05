@@ -21,6 +21,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
                 - track_position (float): Posición en la pista.
                 - tyres_out (int): Número de ruedas fuera de la pista.
                 - car_damage (float): Daño del vehículo.
+                - acc_x (float): Aceleración en el eje X. Negativo giro a la derecha, positivo giro a la izquierda.
                 - transmitting (bool): Indica si se están transmitiendo datos.
         
     """
@@ -44,12 +45,14 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
         track_position = float(parts[4].split(": ")[1])
         tyres_out = int(parts[5].split(": ")[1])
         car_damage = float(parts[6].split(": ")[1])
+        acc_x = float(parts[7].split(": ")[1])
         
         # Redondear los valores a 2 decimales
         speed = round(speed, 2)
         rpms = round(rpms, 2)
         track_position = round(track_position, 5)
         car_damage = round(car_damage, 2)
+        acc_x = round(acc_x, 2)
         
         # Almacenar los valores en un diccionario
         variables = {
@@ -60,6 +63,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "track_position": track_position,
             "tyres_out": tyres_out,
             "car_damage": car_damage,
+            "acc_x": acc_x,
             "transmitting": True
         }
     except socket.timeout:
@@ -73,6 +77,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "track_position": 0.0,
             "tyres_out": 0,
             "car_damage": 0.0,
+            "acc_x": 0.0,
             "transmitting": False
         }
     except KeyboardInterrupt:
@@ -90,6 +95,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "track_position": 0.0,
             "tyres_out": 0,
             "car_damage": 0.0,
+            "acc_x": 0.0,
             "transmitting": False
         }
         

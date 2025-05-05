@@ -54,7 +54,6 @@ class AC_Interface(RealTimeGymInterface):
         print(f"\nResizing images to {self.resize_to}\n")
         self.fullscreen = cfg.ENV_CONFIG['FULL_SCREEN']
         self.initialized = False
-        self.best = 0.0
         self.ep_rew = []
         self.action = None
 
@@ -79,7 +78,8 @@ class AC_Interface(RealTimeGymInterface):
         self.reward_function = RewardFunction(max_mistakes=cfg.REWARD_CONFIG['MAX_MISTAKES'],
                                                 steps_to_forget=cfg.REWARD_CONFIG['STEPS_TO_FORGET'],
                                                 min_nb_steps_before_failure=cfg.REWARD_CONFIG['MIN_STEPS'],
-                                                reward_track_position_weight=cfg.REWARD_CONFIG['TRACK_POS_WEIGHT'],
+                                                reward_checkpoint=cfg.REWARD_CONFIG['REWARD_CHECKPOINT'],
+                                                reward_progress=cfg.REWARD_CONFIG['REWARD_PROGRESS'],
                                                 reward_laps_weight=cfg.REWARD_CONFIG['LAPS_WEIGHT'],
                                                 start_up_multiplier=cfg.REWARD_CONFIG['START_UP_MULTIPLIER'],
                                                 penalty_low_rpms=cfg.REWARD_CONFIG['PENALTY_LOW_RPMS'],
@@ -87,11 +87,14 @@ class AC_Interface(RealTimeGymInterface):
                                                 penalty_backwards=cfg.REWARD_CONFIG['PENALTY_BACKWARDS'],
                                                 penalty_tyres_out=cfg.REWARD_CONFIG['PENALTY_TYRES_OUT'],
                                                 penalty_car_damage=cfg.REWARD_CONFIG['PENALTY_CAR_DAMAGE'],
+                                                penalty_collision=cfg.REWARD_CONFIG['PENALTY_COLLISION'],
                                                 penalty_non_smooth_actions=cfg.REWARD_CONFIG['PENALTY_NON_SMOOTH_ACTIONS'],
                                                 threshold_speed=cfg.REWARD_CONFIG['THRESHOLD_SPEED'],
                                                 threshold_rpms=cfg.REWARD_CONFIG['THRESHOLD_RPMS'],
                                                 threshold_checkpoint=cfg.REWARD_CONFIG['THRESHOLD_CHECKPOINT'],
-                                                threshold_smooth_actions=cfg.REWARD_CONFIG['THRESHOLD_SMOOTH_ACTIONS']
+                                                threshold_smooth_actions=cfg.REWARD_CONFIG['THRESHOLD_SMOOTH_ACTIONS'],
+                                                hist_len=self.img_hist_len,
+                                                time_step_duration=cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
                                                 )
                                               
 
@@ -129,10 +132,6 @@ class AC_Interface(RealTimeGymInterface):
                 elif control[2] < -0.5:
                     actions.append('l')
                 apply_control(actions) """
-            
-        data = self.grab_data()
-            
-        print(f"PR: {self.best} {data} Gas-Brake Turn: {np.round(control, 2)}                        ", end="\r")
 
     def grab_data(self):
         """
@@ -243,9 +242,6 @@ class AC_Interface(RealTimeGymInterface):
         info = {}       
         rew = np.float32(rew)
 
-        if data["track_position"] > self.best and data["track_position"] < 0.995:
-            self.best = data["track_position"]
-
         return obs, rew, terminated, info
 
     def get_observation_space(self):
@@ -286,11 +282,5 @@ class AC_Interface(RealTimeGymInterface):
         """
         return np.array([0.0, 0.0], dtype='float32') # Cambiar a [0.0, 0.0, 0.0] para gas brake y steering
     
-# rtgym configuration ductionary:
-
-AC_ENV_CONFIG = DEFAULT_CONFIG_DICT.copy()
-AC_ENV_CONFIG["interface"] = AC_Interface
-
-
 if __name__ == "__main__":
     pass
