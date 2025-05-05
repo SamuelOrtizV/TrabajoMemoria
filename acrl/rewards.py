@@ -158,9 +158,9 @@ class RewardFunction:
             reward += action[0] * self.start_up_multiplier
 
         # Penalty for low RPMs
-        if telemetry_data["rpms"] < self.threshold_rpms*2:
-            reward += self.penalty_low_rpms/2
-        elif telemetry_data["rpms"] < self.threshold_rpms:
+        """ if telemetry_data["rpms"] < self.threshold_rpms*2:
+            reward += self.penalty_low_rpms/2 """
+        if telemetry_data["rpms"] < self.threshold_rpms:
             reward += self.penalty_low_rpms
 
         # Penalty for low speed
