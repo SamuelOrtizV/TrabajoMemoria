@@ -140,7 +140,7 @@ class RewardFunction:
 
         # ----------------------PENALTIES---------------------------
 
-        # Penalty for non-smooth actions
+        """ # Penalty for non-smooth actions
         if self.last_action is not None:
             gas_brake_diff = abs(action[0] - self.last_action[0])
             wheel_diff = abs(action[1] - self.last_action[1])
@@ -148,7 +148,7 @@ class RewardFunction:
             if gas_brake_diff > self.threshold_smooth_actions or wheel_diff > self.threshold_smooth_actions:
                 reward += self.penalty_non_smooth_actions
             
-        self.last_action = action  # we update the last action taken by the car
+        self.last_action = action  # we update the last action taken by the car """
 
         # Penalty for going off track
         """ if telemetry_data["tyres_out"] > 0:
@@ -183,7 +183,7 @@ class RewardFunction:
         # Penalty for continuous collision
         if collision and telemetry_data["car_damage"] > 0:
             reward += self.penalty_collision
-            mistake = True
+            #mistake = True
 
         # Termination conditions
         if mistake:
