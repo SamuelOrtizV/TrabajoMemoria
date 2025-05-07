@@ -183,7 +183,7 @@ class RewardFunction:
         # Penalty for continuous collision
         if collision and telemetry_data["car_damage"] > 0:
             reward += self.penalty_collision
-            #mistake = True
+            mistake = True
 
         # Termination conditions
         if mistake:

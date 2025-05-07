@@ -4,6 +4,7 @@ from rewards import RewardFunction
 from UDP_listener import udp_listener
 from inputs.xbox_controller_emulator import XboxControllerEmulator
 from inputs.GameInputs import reset_race
+from window_interface import MSSWindowInterface
 
 # standard library imports
 import logging
@@ -15,9 +16,8 @@ import cv2
 import gymnasium.spaces as spaces
 import numpy as np
 
-from rtgym import RealTimeGymInterface, DEFAULT_CONFIG_DICT
+from rtgym import RealTimeGymInterface
 import tmrl.config.config_constants as cfg
-from tmrl.custom.tm.utils.window import WindowInterface
 
 
 class AC_Interface(RealTimeGymInterface):
@@ -57,13 +57,16 @@ class AC_Interface(RealTimeGymInterface):
         self.ep_rew = []
         self.action = None
 
+        # Crear el visualizador
+        self.visualizer = ImageVisualizer()
+
     def initialize_common(self):
         if self.gamepad:
             self.controller = XboxControllerEmulator()
             logging.debug(" virtual joystick in use")
         while True:
             try:
-                self.window_interface = WindowInterface("Assetto Corsa",)
+                self.window_interface = MSSWindowInterface("Assetto Corsa",)
                 break
             except Exception as e:
                 print("Waiting for Assetto Corsa's window...                                                                        ", end="\r")
@@ -72,8 +75,8 @@ class AC_Interface(RealTimeGymInterface):
         self.last_time = time.time()
         self.img_hist = deque(maxlen=self.img_hist_len)
         
-        if not self.fullscreen:
-            self.window_interface.move_and_resize()
+        """ if not self.fullscreen:
+            self.window_interface.move_and_resize() """
 
         self.reward_function = RewardFunction(max_mistakes=cfg.REWARD_CONFIG['MAX_MISTAKES'],
                                                 steps_to_forget=cfg.REWARD_CONFIG['STEPS_TO_FORGET'],
@@ -142,16 +145,17 @@ class AC_Interface(RealTimeGymInterface):
         return data
 
     def grab_img(self):
-        img = self.window_interface.screenshot()[:, :, :3]  # BGR ordering
+        img = self.window_interface.screenshot()[:, :, :3]  # BGR ordering        
+
         if self.resize_to is not None:  # cv2.resize takes dim as (width, height)
             img = cv2.resize(img, self.resize_to)
         if self.grayscale:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             # shape is (height, width) for cv2 grayscale images
         else:
-            img = img[:, :, ::-1]  # reversed view for numpy RGB convention
-            # shape is (height, width, channels) for cv2 images
-        # img = img.astype(np.float32) / 255.0
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  #img[:, :, ::-1]  # reversed view for numpy RGB convention
+            # shape is (height, width, channels) for cv2 images    
+        self.visualizer.update_image(img)  # Actualizar la imagen en el visualizador
         return img
 
     def reset_common(self):
@@ -281,6 +285,89 @@ class AC_Interface(RealTimeGymInterface):
         initial action at episode start
         """
         return np.array([0.0, 0.0], dtype='float32') # Cambiar a [0.0, 0.0, 0.0] para gas brake y steering
+
+import tkinter as tk  
+from PIL import Image, ImageTk
+
+class ImageVisualizer:
+    def __init__(self, title="Visualización en tiempo real", position="top-right"):
+        """
+        Inicializa el visualizador de imágenes con Tkinter.
+
+        Args:
+            title (str): Título de la ventana.
+            position (str): Posición de la ventana en la pantalla ("top-right", "top-left", etc.).
+        """
+        self.root = tk.Tk()
+        self.root.title(title)
+
+        # Configurar la posición de la ventana
+        self.set_window_position(position)
+
+        # Crear un widget de etiqueta para mostrar la imagen
+        self.label = tk.Label(self.root)
+        self.label.pack()
+
+    def set_window_position(self, position):
+        """
+        Configura la posición de la ventana en la pantalla.
+
+        Args:
+            position (str): Posición de la ventana ("top-right", "top-left", etc.).
+        """
+        # Obtener el tamaño de la pantalla
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+
+        # Calcular la posición
+        if position == "top-right":
+            x_offset = screen_width - 300  # Dejar un margen pequeño
+            y_offset = 0
+        elif position == "top-left":
+            x_offset = 0
+            y_offset = 0
+        elif position == "bottom-right":
+            x_offset = screen_width - 300
+            y_offset = screen_height - 300
+        elif position == "bottom-left":
+            x_offset = 0
+            y_offset = screen_height - 300
+        else:  # Centro por defecto
+            x_offset = screen_width // 2
+            y_offset = screen_height // 2
+
+        # Configurar la geometría de la ventana (sin ajustar dimensiones manualmente)
+        self.root.geometry(f"+{x_offset}+{y_offset}")
+
+    def update_image(self, img):
+        """
+        Actualiza la imagen mostrada en la ventana.
+
+        Args:
+            img: La imagen a mostrar (numpy array).
+        """
+        # Convertir la imagen a un formato compatible con Tkinter
+        if len(img.shape) == 2:  # Escala de grises
+            img = Image.fromarray(img)
+        else:  # Color RGB
+            img = Image.fromarray(img, 'RGB')
+
+        # Convertir la imagen a un objeto PhotoImage
+        img_tk = ImageTk.PhotoImage(img)
+
+        # Actualizar la imagen en el widget de etiqueta
+        self.label.config(image=img_tk)
+        self.label.image = img_tk
+
+        # Actualizar la ventana
+        self.root.update_idletasks()
+        self.root.update()
+
+    def close(self):
+        """
+        Cierra la ventana de visualización.
+        """
+        self.root.destroy()
     
 if __name__ == "__main__":
     pass
