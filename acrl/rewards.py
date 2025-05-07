@@ -151,9 +151,9 @@ class RewardFunction:
         self.last_action = action  # we update the last action taken by the car
 
         # Penalty for going off track
-        if telemetry_data["tyres_out"] > 0:
+        """ if telemetry_data["tyres_out"] > 0:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
-            mistake = True 
+            mistake = True  """
 
         # Penalty and reward for acceleration when starting from 0
         if telemetry_data["gear"] == 1:
