@@ -33,8 +33,5 @@ if platform.system() == "Windows":
             img = np.array(self.sct.grab(monitor))
             return img
 
-        def __del__(self):
-            self.sct.close()
-
 else:
     print("Please use class WindowsInterface directly for non-Windows platforms.")

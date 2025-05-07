@@ -35,7 +35,17 @@ class XboxControllerEmulator:
             self.gamepad.right_trigger_float(value_float=0.0)
 
         self.gamepad.left_joystick_float(control[1], 0.0)  # turn
-        self.gamepad.update() 
+        self.gamepad.update()
+    
+    def next_gear(self):
+        """
+        Cambia a la siguiente marcha.
+        """
+        self.gamepad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
+        self.gamepad.update()
+        time.sleep(0.05)  # Espera un poco para simular el tiempo de pulsación del botón
+        self.gamepad.release_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
+        self.gamepad.update()
 
     def reset(self):
         """

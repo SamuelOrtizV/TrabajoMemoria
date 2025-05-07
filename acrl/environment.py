@@ -56,6 +56,7 @@ class AC_Interface(RealTimeGymInterface):
         self.initialized = False
         self.ep_rew = []
         self.action = None
+        self.best = 0.0
 
         # Crear el visualizador
         self.visualizer = ImageVisualizer()
@@ -85,7 +86,7 @@ class AC_Interface(RealTimeGymInterface):
                                                 reward_progress=cfg.REWARD_CONFIG['REWARD_PROGRESS'],
                                                 reward_laps_weight=cfg.REWARD_CONFIG['LAPS_WEIGHT'],
                                                 start_up_multiplier=cfg.REWARD_CONFIG['START_UP_MULTIPLIER'],
-                                                penalty_low_rpms=cfg.REWARD_CONFIG['PENALTY_LOW_RPMS'],
+                                                penalty_no_progress=cfg.REWARD_CONFIG['PENALTY_NO_PROGRESS'],
                                                 penalty_low_speed=cfg.REWARD_CONFIG['PENALTY_LOW_SPEED'],
                                                 penalty_backwards=cfg.REWARD_CONFIG['PENALTY_BACKWARDS'],
                                                 penalty_tyres_out=cfg.REWARD_CONFIG['PENALTY_TYRES_OUT'],
@@ -96,6 +97,7 @@ class AC_Interface(RealTimeGymInterface):
                                                 threshold_rpms=cfg.REWARD_CONFIG['THRESHOLD_RPMS'],
                                                 threshold_checkpoint=cfg.REWARD_CONFIG['THRESHOLD_CHECKPOINT'],
                                                 threshold_smooth_actions=cfg.REWARD_CONFIG['THRESHOLD_SMOOTH_ACTIONS'],
+                                                threshold_damage=cfg.REWARD_CONFIG['THRESHOLD_DAMAGE'],
                                                 hist_len=self.img_hist_len,
                                                 time_step_duration=cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
                                                 )
@@ -163,6 +165,8 @@ class AC_Interface(RealTimeGymInterface):
             self.initialize()
         self.send_control(self.get_default_action())
         reset_race(cfg.SLEEP_TIME_AT_RESET)
+        time.sleep(0.5)
+        self.controller.next_gear()
         # must be long enough for image to be refreshed
 
     def reset(self, seed=None, options=None):
@@ -176,7 +180,7 @@ class AC_Interface(RealTimeGymInterface):
             min_reward = min(self.ep_rew)
             max_reward = max(self.ep_rew)
             avg_reward = total_reward / len(self.ep_rew)
-            print(f"Episode reward: {total_reward:.2f} Min reward: {min_reward:.2f} Max reward: {max_reward:.2f} Average reward: {avg_reward:.2f} \n")
+            print(f"PR: {self.best} Episode reward: {total_reward:.2f} Min reward: {min_reward:.2f} Max reward: {max_reward:.2f} Average reward: {avg_reward:.2f} \n")
         else:
             print("No rewards recorded for the previous episode.\n")
         self.ep_rew = []
@@ -185,9 +189,6 @@ class AC_Interface(RealTimeGymInterface):
         data = self.grab_data()
         img = self.grab_img()
 
-        # Estos datos son un poco trampa ya que no se extraen de forma visual
-        # Hay que evaluar su impacto y la posibilidad de extraerlos de forma visual
-        # o incluso de no usarlos
         speed = np.array([
             data["speed"],
         ], dtype='float32')
@@ -213,7 +214,7 @@ class AC_Interface(RealTimeGymInterface):
         """
         self.send_control(self.get_default_action())
         if self.save_replays:
-            # POR IMPLEMENTAR
+            # TODO: POR IMPLEMENTAR
             pass
 
         """ self.reset_race()
@@ -245,6 +246,9 @@ class AC_Interface(RealTimeGymInterface):
         obs = [speed, gear, rpm, imgs]        
         info = {}       
         rew = np.float32(rew)
+
+        if data["track_position"] > self.best and data["track_position"] < 0.995:
+            self.best = data["track_position"]
 
         return obs, rew, terminated, info
 

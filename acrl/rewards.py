@@ -13,7 +13,7 @@ class RewardFunction:
                  reward_progress=0.1,
                  reward_laps_weight=500.0,
                  start_up_multiplier=0.1,
-                 penalty_low_rpms=-0.2,
+                 penalty_no_progress=-0.2,
                  penalty_low_speed=-0.2,
                  penalty_backwards=-0.5,
                  penalty_tyres_out=-0.5,
@@ -24,6 +24,7 @@ class RewardFunction:
                  threshold_rpms=2000.0,
                  threshold_checkpoint=0.01,
                  threshold_smooth_actions=0.1,
+                 threshold_damage=25.0,
                  hist_len=4,
                  time_step_duration=0.05,
                  buffer_lapse=0.5,
@@ -41,7 +42,7 @@ class RewardFunction:
             reward_checkpoint (float): Weight for reaching a checkpoint.
             reward_progress (float): Weight for progress on the track.
             reward_laps_weight (float): Weight for completing a lap.
-            penalty_low_rpms (float): Penalty for low RPMs.
+            penalty_no_progress (float): Penalty for making no progress.
             penalty_backwards (float): Penalty for moving backwards.
             penalty_tyres_out (float): Penalty for going off track.
             penalty_car_damage (float): Penalty for car damage.
@@ -50,6 +51,7 @@ class RewardFunction:
             threshold_rpms (float): Minimum RPMs to avoid low RPM penalty.
             threshold_checkpoint (float): Threshold for track position to receive checkpoint reward.
             threshold_smooth_actions (float): Threshold for smooth actions.
+            threshold_damage (float): Threshold for car damage to terminate the episode.
             hist_len (int): Length of the history of images captured.
             time_step_duration (float): Duration of each time step in seconds.
             buffer_lapse (float): Duration of the collision detection buffer in seconds.
@@ -65,7 +67,7 @@ class RewardFunction:
         self.reward_progress = reward_progress
         self.reward_laps_weight = reward_laps_weight
         self.start_up_multiplier = start_up_multiplier
-        self.penalty_low_rpms = penalty_low_rpms
+        self.penalty_no_progress = penalty_no_progress
         self.penalty_low_speed = penalty_low_speed
         self.penalty_backwards = penalty_backwards
         self.penalty_tyres_out = penalty_tyres_out
@@ -76,6 +78,7 @@ class RewardFunction:
         self.threshold_rpms = threshold_rpms
         self.threshold_checkpoint = threshold_checkpoint
         self.threshold_smooth_actions = threshold_smooth_actions
+        self.threshold_damage = threshold_damage
         self.position_buffer = deque([0.0] * hist_len, maxlen=hist_len)
         self.buffer_size = int(buffer_lapse / time_step_duration) 
         self.steering_buffer = deque(maxlen=self.buffer_size)
@@ -92,8 +95,6 @@ class RewardFunction:
         self.car_damage = 0.0
 
         self.last_action = None  # last action taken by the car
-
-        self.best = 0.0
 
     def compute_reward(self, telemetry_data, action):
         """
@@ -155,20 +156,20 @@ class RewardFunction:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
             mistake = True  """
 
-        # Penalty and reward for acceleration when starting from 0
+        """ # Penalty and reward for acceleration when starting from 0
         if telemetry_data["gear"] == 1:
-            reward += action[0] * self.start_up_multiplier
+            reward += action[0] * self.start_up_multiplier """
 
-        # Penalty for low RPMs
-        """ if telemetry_data["rpms"] < self.threshold_rpms*2:
-            reward += self.penalty_low_rpms/2 """
-        if telemetry_data["rpms"] < self.threshold_rpms:
-            reward += self.penalty_low_rpms
-
-        # Penalty for low speed or zero progress
-        if telemetry_data["speed"] < self.threshold_speed or progress == 0: # and telemetry_data["gear"] > 1:  # If the car is not moving
-            reward += self.penalty_low_speed
-            mistake = True   
+        # Penalty for low speed
+        if telemetry_data["speed"] < self.threshold_speed:
+            # Penalization decreases linearly from 0 to penalty_low_speed as speed decreases from threshold_speed to 0
+            reward += self.penalty_low_speed*(self.threshold_speed - telemetry_data["speed"])/self.threshold_speed
+            #mistake = True
+        
+        # Penalty for zero progress
+        if progress == 0:
+            reward += self.penalty_no_progress
+            mistake = True
 
         # Penalty for moving backwards
         if progress < 0:
@@ -199,8 +200,8 @@ class RewardFunction:
                 self.mistake_counter = 0
                 self.no_mistake_counter = 0
 
-        if telemetry_data["car_damage"] > 25:
-            terminated = True  # The episode ends if the car is damaged
+        if telemetry_data["car_damage"] > self.threshold_damage:
+            terminated = True  # The episode ends if the car is damaged beyond the threshold
 
         max_reward = max(1, abs(reward))
         reward = reward / max_reward
@@ -263,10 +264,9 @@ class RewardFunction:
     def print_status(self, data, action, collision):
         """
         Prints the status of the run
-        """
+        """      
+        """ speed = data["speed"]
+        rpms = data["rpms"] """
 
-        if data["track_position"] > self.best and data["track_position"] < 0.995:
-            self.best = data["track_position"]
-        
-        print(f"PR: {self.best} {data} Collision: {collision} Gas-Brake Turn: {np.round(action, 2)}                        ", end="\r")
+        print(f"{data} Collision: {collision} Gas-Brake Turn: {np.round(action, 2)}                        ", end="\r")
         
