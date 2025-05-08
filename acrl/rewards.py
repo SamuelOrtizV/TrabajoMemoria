@@ -115,7 +115,8 @@ class RewardFunction:
         track_position = 0.0 if telemetry_data["track_position"] >= 0.995 else telemetry_data["track_position"]
         self.position_buffer.append(track_position)  # we add the current position to the buffer
         progress = self.position_buffer[-1] - self.position_buffer[0]
-        self.previous_checkpoint = track_position if self.previous_checkpoint is None else self.previous_checkpoint
+        if self.previous_checkpoint is None:
+            self.previous_checkpoint = track_position
         checkpoint_difference = track_position - self.previous_checkpoint
 
         # ----------------------REWARDS---------------------------
@@ -124,12 +125,12 @@ class RewardFunction:
         if telemetry_data["laps"] > self.previous_lap:
             """ reward += self.reward_laps_weight
             self.previous_lap = telemetry_data["laps"] """
-            self.threshold_checkpoint = 0.0
+            self.previous_checkpoint = 0.0
 
         # Reward for reaching a checkpoint
         if checkpoint_difference > self.threshold_checkpoint:
             reward += self.reward_checkpoint
-            print(f"Checkpoint reached: {track_position}                                                                      ")
+            print(f"Checkpoint reached: {track_position}                                                                                                                                                              ")
             self.previous_checkpoint = track_position
 
         # Reward for progress on the track

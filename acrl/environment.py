@@ -30,7 +30,7 @@ class AC_Interface(RealTimeGymInterface):
                  save_replays: bool = False, #POR IMPLEMENTAR
                  grayscale: bool = cfg.GRAYSCALE,
                  resize_to=(cfg.IMG_WIDTH, cfg.IMG_HEIGHT),
-                 human_mode: bool = True
+                 human_mode: bool = cfg.TMRL_CONFIG["HUMAN_WORKER"]
                  ):
         """
         Base rtgym interface for Assetto Corsa 
@@ -73,7 +73,7 @@ class AC_Interface(RealTimeGymInterface):
                 self.controller = XboxControllerEmulator()
                 logging.debug(" virtual joystick in use")
         
-        assert(self.gamepad == True, "Only gamepad supported")
+        assert self.gamepad == True, "Only gamepad supported"
 
 
         while True:
@@ -130,11 +130,13 @@ class AC_Interface(RealTimeGymInterface):
         Args:
             control: np.array: [gas-brake,steering] values between -1.0 and 1.0
         """
+        self.action = control
+
         if self.gamepad:
             if control is not None:
                 if not self.human_mode:
                     self.controller.control_gamepad(control)
-                self.action = control
+                    print("bruh")               
         else:
             pass
             # Por implementar para AC

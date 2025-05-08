@@ -67,12 +67,10 @@ class XboxControllerReader:
             self.joystick.get_axis(5),
         )
 
-        steering = round(lx,2)
-        throttle_brake = round((rt - lt) / 2,2)
+        steering = lx
+        throttle_brake = (rt - lt) / 2
 
-        return np.array([throttle_brake, steering])
-
-        #return lx, lt, rt
+        return np.array([throttle_brake, steering], dtype=np.float32)
     
 
 def imprimir_estado_controlador() -> None:
@@ -85,7 +83,6 @@ def imprimir_estado_controlador() -> None:
 
     try:
         while True:
-            import numpy as np
             entrada = control.read()  # Llama al método read
             #print(f"Valor del stick izquierdo (lx): {lx:.2f}, Gatillo izquierdo (lt): {lt:.2f}, Gatillo derecho (rt): {rt:.2f}", end="\r")
             print(f"Dirección: {entrada[1]}, Acelerar frenar: {entrada[0]}", end="\r")

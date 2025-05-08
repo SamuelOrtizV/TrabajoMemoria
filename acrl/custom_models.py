@@ -787,7 +787,7 @@ class HumanActor(TorchActorModule):
     def __init__(self, observation_space, action_space):
         super().__init__(observation_space, action_space)
         self.action_space = action_space
-        self.controller = XboxControllerReader()  # Instancia para leer el controlador Xbox
+        self.controller = XboxControllerReader(total_wait_secs=7)  # Instancia para leer el controlador Xbox
 
     def forward(self, obs, test=False, with_logprob=True):
         """

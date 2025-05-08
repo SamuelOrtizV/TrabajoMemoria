@@ -1,5 +1,5 @@
 from UDP_listener import udp_listener
-from xbox_controller_inputs import XboxControllerReader
+from acrl.inputs.xbox_controller_inputs import XboxControllerReader
 from collections import deque
 import time
 

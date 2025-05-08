@@ -6,13 +6,9 @@ from custom_models import SquashedGaussianVanillaCNNActor, HumanActor,SquashedGa
 from environment import AC_Interface
 from memories import get_local_buffer_sample_imgs
 from tmrl.envs import GenericGymEnv
-import numpy as np
 
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
-
-# Human expert mode
-HUMAN_MODE = True
 
 # === Environment ======================================================================================================
 
@@ -56,7 +52,7 @@ env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config":
 # A RolloutWorker contains an ActorModule, which encapsulates its policy.
 
 # ActorModule:
-if HUMAN_MODE:
+if cfg.TMRL_CONFIG["HUMAN_WORKER"]:
     actor_module_cls = HumanActor
 else:
     actor_module_cls = SquashedGaussianVanillaCNNActor
@@ -89,4 +85,4 @@ if __name__ == "__main__":
     # Note: at this point, the RolloutWorker is not collecting samples yet.
     # Nevertheless, it connects to the Server.
 
-    my_worker.run(test_episode_interval=20, verbose=True, expert=HUMAN_MODE) # This will make the worker collect samples and send them to the server.
+    my_worker.run(test_episode_interval=20, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
