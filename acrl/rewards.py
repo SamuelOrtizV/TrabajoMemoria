@@ -154,7 +154,7 @@ class RewardFunction:
         # Penalty for going off track
         if telemetry_data["tyres_out"] > 0:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
-            mistake = True 
+            #mistake = True 
 
         """ # Penalty and reward for acceleration when starting from 0
         if telemetry_data["gear"] == 1:
@@ -164,7 +164,7 @@ class RewardFunction:
         if telemetry_data["speed"] < self.threshold_speed:
             # Penalization decreases linearly from 0 to penalty_low_speed as speed decreases from threshold_speed to 0
             reward += self.penalty_low_speed*(self.threshold_speed - telemetry_data["speed"])/self.threshold_speed
-            reward += action[0] * self.start_up_multiplier
+            #reward += action[0] * self.start_up_multiplier
             #mistake = True
         
         # Penalty for zero progress
