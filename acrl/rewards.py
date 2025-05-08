@@ -160,10 +160,11 @@ class RewardFunction:
         if telemetry_data["gear"] == 1:
             reward += action[0] * self.start_up_multiplier """
 
-        # Penalty for low speed
+        # Penalty for low speed - Penalty and reward when starting from 0
         if telemetry_data["speed"] < self.threshold_speed:
             # Penalization decreases linearly from 0 to penalty_low_speed as speed decreases from threshold_speed to 0
             reward += self.penalty_low_speed*(self.threshold_speed - telemetry_data["speed"])/self.threshold_speed
+            reward += action[0] * self.start_up_multiplier
             #mistake = True
         
         # Penalty for zero progress
