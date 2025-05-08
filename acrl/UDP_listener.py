@@ -51,7 +51,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
         speed = round(speed, 2)
         rpms = round(rpms, 2)
         track_position = round(track_position, 5)
-        car_damage = round(car_damage, 2)
+        car_damage = round(car_damage, 4)
         acc_x = round(acc_x, 2)
         
         # Almacenar los valores en un diccionario
