@@ -18,7 +18,7 @@ from tmrl.util import prod
 from tmrl.actor import TorchActorModule
 import tmrl.config.config_constants as cfg
 
-
+from inputs.xbox_controller_inputs import XboxControllerReader
 # SUPPORTED ============================================================================================================
 
 
@@ -782,6 +782,42 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         with torch.no_grad():
             a, _ = self.forward(obs, test, False)
             return a.squeeze().cpu().numpy()
+        
+class HumanActor(TorchActorModule):
+    def __init__(self, observation_space, action_space):
+        super().__init__(observation_space, action_space)
+        self.action_space = action_space
+        self.controller = XboxControllerReader()  # Instancia para leer el controlador Xbox
+
+    def forward(self, obs, test=False, with_logprob=True):
+        """
+        Este método no se utiliza en el modo humano, ya que las acciones provienen del controlador.
+        """
+        raise NotImplementedError("El método 'forward' no es necesario para el HumanActor con entradas humanas.")
+
+    def act(self, obs, test=False):
+        """
+        Captura las acciones del controlador Xbox y las ajusta al espacio de acciones.
+        """
+        # Leer las entradas del controlador
+        controller_inputs = self.controller.read()
+
+        # Asegurarse de que la acción esté dentro de los límites del espacio de acciones
+        action = self._clip_action(controller_inputs)
+
+        return action
+
+    def _clip_action(self, action):
+        """
+        Asegura que la acción esté dentro de los límites del espacio de acciones.
+
+        Args:
+            action (np.array): Acción generada.
+
+        Returns:
+            np.array: Acción ajustada dentro de los límites.
+        """
+        return np.clip(action, self.action_space.low, self.action_space.high)
 
 
 class VanillaCNNQFunction(nn.Module):

@@ -2,6 +2,7 @@ import pygame
 import time
 import sys
 import logging
+import numpy as np
 from typing import Tuple
 
 class XboxControllerReader:
@@ -14,7 +15,7 @@ class XboxControllerReader:
     name: str
     joystick_id: int
 
-    def __init__(self, total_wait_secs: int = 10):
+    def __init__(self, total_wait_secs: int = 5):
         """
         Inicializa el controlador.
         
@@ -66,10 +67,10 @@ class XboxControllerReader:
             self.joystick.get_axis(5),
         )
 
-        steering = f"{lx:.2f}"
-        throttle_brake = f"{(rt - lt) / 2:.2f}"
+        steering = round(lx,2)
+        throttle_brake = round((rt - lt) / 2,2)
 
-        return steering, throttle_brake
+        return np.array([throttle_brake, steering])
 
         #return lx, lt, rt
     
@@ -84,13 +85,16 @@ def imprimir_estado_controlador() -> None:
 
     try:
         while True:
-            steering, throttle_brake = control.read()  # Llama al método read
+            import numpy as np
+            entrada = control.read()  # Llama al método read
             #print(f"Valor del stick izquierdo (lx): {lx:.2f}, Gatillo izquierdo (lt): {lt:.2f}, Gatillo derecho (rt): {rt:.2f}", end="\r")
-            print(f"Dirección: {steering}, Acelerar frenar: {throttle_brake}", end="\r")
+            print(f"Dirección: {entrada[1]}, Acelerar frenar: {entrada[0]}", end="\r")
             time.sleep(0.1)  # Pausa corta para evitar un loop muy rápido
     except KeyboardInterrupt:
         print("\nSaliendo...")
 
 
 # Ejecutar la función para leer el estado del controlador
-#imprimir_estado_controlador()
+
+if __name__ == "__main__":
+    imprimir_estado_controlador()

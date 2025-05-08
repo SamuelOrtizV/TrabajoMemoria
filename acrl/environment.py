@@ -29,7 +29,9 @@ class AC_Interface(RealTimeGymInterface):
                  gamepad: bool = True,
                  save_replays: bool = False, #POR IMPLEMENTAR
                  grayscale: bool = cfg.GRAYSCALE,
-                 resize_to=(cfg.IMG_WIDTH, cfg.IMG_HEIGHT)):
+                 resize_to=(cfg.IMG_WIDTH, cfg.IMG_HEIGHT),
+                 human_mode: bool = True
+                 ):
         """
         Base rtgym interface for Assetto Corsa 
 
@@ -52,6 +54,7 @@ class AC_Interface(RealTimeGymInterface):
         self.grayscale = grayscale
         self.resize_to = resize_to if resize_to != (cfg.WINDOW_WIDTH, cfg.WINDOW_HEIGHT) else None
         print(f"\nResizing images to {self.resize_to}\n")
+        self.human_mode = human_mode
         self.fullscreen = cfg.ENV_CONFIG['FULL_SCREEN']
         self.initialized = False
         self.ep_rew = []
@@ -61,10 +64,18 @@ class AC_Interface(RealTimeGymInterface):
         # Crear el visualizador
         self.visualizer = ImageVisualizer()
 
-    def initialize_common(self):
+    def initialize_common(self):    
+
         if self.gamepad:
-            self.controller = XboxControllerEmulator()
-            logging.debug(" virtual joystick in use")
+            if self.human_mode:
+                logging.debug(" real joystick in use")
+            else:
+                self.controller = XboxControllerEmulator()
+                logging.debug(" virtual joystick in use")
+        
+        assert(self.gamepad == True, "Only gamepad supported")
+
+
         while True:
             try:
                 self.window_interface = MSSWindowInterface("Assetto Corsa",)
@@ -121,7 +132,8 @@ class AC_Interface(RealTimeGymInterface):
         """
         if self.gamepad:
             if control is not None:
-                self.controller.control_gamepad(control)
+                if not self.human_mode:
+                    self.controller.control_gamepad(control)
                 self.action = control
         else:
             pass
@@ -163,10 +175,13 @@ class AC_Interface(RealTimeGymInterface):
     def reset_common(self):
         if not self.initialized:
             self.initialize()
-        self.send_control(self.get_default_action())
-        reset_race(cfg.SLEEP_TIME_AT_RESET)
-        time.sleep(0.5)
-        self.controller.next_gear()
+        if not self.human_mode:
+            self.send_control(self.get_default_action())
+            reset_race(cfg.SLEEP_TIME_AT_RESET)
+            time.sleep(0.5)
+            self.controller.next_gear()
+        else:
+            reset_race(cfg.SLEEP_TIME_AT_RESET)
         # must be long enough for image to be refreshed
 
     def reset(self, seed=None, options=None):
@@ -212,7 +227,8 @@ class AC_Interface(RealTimeGymInterface):
         Non-blocking function
         The agent stays 'paused', waiting in position
         """
-        self.send_control(self.get_default_action())
+        if not self.human_mode:
+            self.send_control(self.get_default_action())
         if self.save_replays:
             # TODO: POR IMPLEMENTAR
             pass

@@ -2,7 +2,7 @@ import tmrl.config.config_constants as cfg
 from tmrl.config.config_objects import CONFIG_DICT
 from tmrl.networking import RolloutWorker
 from tmrl.util import partial
-from custom_models import SquashedGaussianVanillaCNNActor, SquashedGaussianEffNetActor
+from custom_models import SquashedGaussianVanillaCNNActor, HumanActor,SquashedGaussianEffNetActor
 from environment import AC_Interface
 from memories import get_local_buffer_sample_imgs
 from tmrl.envs import GenericGymEnv
@@ -10,6 +10,9 @@ import numpy as np
 
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
+
+# Human expert mode
+HUMAN_MODE = True
 
 # === Environment ======================================================================================================
 
@@ -53,8 +56,10 @@ env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config":
 # A RolloutWorker contains an ActorModule, which encapsulates its policy.
 
 # ActorModule:
-
-actor_module_cls = SquashedGaussianVanillaCNNActor
+if HUMAN_MODE:
+    actor_module_cls = HumanActor
+else:
+    actor_module_cls = SquashedGaussianVanillaCNNActor
 
 # SquashedGaussianMLPActor processes observations through an MLP.
 # It is designed to work with the SAC algorithm.
@@ -76,7 +81,7 @@ if __name__ == "__main__":
         sample_compressor=get_local_buffer_sample_imgs,  #cfg_obj.SAMPLE_COMPRESSOR, #
         device= "cuda" if cfg.CUDA_INFERENCE else "cpu",  # True if CUDA, False if CPU (rollout worker)
         max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE,
-        standalone=True,
+        standalone=False,
         server_ip=cfg.SERVER_IP_FOR_WORKER,
         #model_path_history=model_path_history,  # not used when model_history is -1
         crc_debug=CRC_DEBUG)
@@ -84,4 +89,4 @@ if __name__ == "__main__":
     # Note: at this point, the RolloutWorker is not collecting samples yet.
     # Nevertheless, it connects to the Server.
 
-    my_worker.run(test_episode_interval=20, verbose=True) # This will make the worker collect samples and send them to the server.
+    my_worker.run(test_episode_interval=20, verbose=True, expert=HUMAN_MODE) # This will make the worker collect samples and send them to the server.
