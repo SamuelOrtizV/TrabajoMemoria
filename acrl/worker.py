@@ -76,6 +76,7 @@ if __name__ == "__main__":
         sample_compressor=get_local_buffer_sample_imgs,  #cfg_obj.SAMPLE_COMPRESSOR, #
         device= "cuda" if cfg.CUDA_INFERENCE else "cpu",  # True if CUDA, False if CPU (rollout worker)
         max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE,
+        standalone=True,
         server_ip=cfg.SERVER_IP_FOR_WORKER,
         #model_path_history=model_path_history,  # not used when model_history is -1
         crc_debug=CRC_DEBUG)
