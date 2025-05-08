@@ -120,10 +120,10 @@ class RewardFunction:
 
         # ----------------------REWARDS---------------------------
 
-        # Reward for completing a lap
+        """ # Reward for completing a lap
         if telemetry_data["laps"] > self.previous_lap:
             reward += self.reward_laps_weight
-            self.previous_lap = telemetry_data["laps"]     
+            self.previous_lap = telemetry_data["laps"]   """   
 
         # Reward for reaching a checkpoint
         if checkpoint_difference > self.threshold_checkpoint:
@@ -206,6 +206,11 @@ class RewardFunction:
 
         max_reward = max(1, abs(reward))
         reward = reward / max_reward
+
+        # Reward for completing a lap
+        if telemetry_data["laps"] > self.previous_lap:
+            reward += self.reward_laps_weight
+            self.previous_lap = telemetry_data["laps"]  
 
         self.print_status(telemetry_data, action, collision)  # we print the status of the run
 
