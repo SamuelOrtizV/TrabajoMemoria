@@ -570,12 +570,14 @@ def conv2d_out_dims(conv_layer, h_in, w_in):
 
 
 class VanillaCNN(Module):
-    def __init__(self, q_net):
+    def __init__(self, q_net, action_space_size):
         super(VanillaCNN, self).__init__()
         self.q_net = q_net
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
         self.hist_len = cfg.IMG_HIST_LEN
         self.num_channels = 1 if cfg.GRAYSCALE else 3
+        self.action_space_size = action_space_size
+        self.act_buf_len = cfg.ACT_BUF_LEN
    
         self.conv1 = Conv2d(self.hist_len * self.num_channels, 64, 8, stride=2)
         self.h_out, self.w_out = conv2d_out_dims(self.conv1, self.h_out, self.w_out)
@@ -587,33 +589,63 @@ class VanillaCNN(Module):
         self.h_out, self.w_out = conv2d_out_dims(self.conv4, self.h_out, self.w_out)
         self.out_channels = self.conv4.out_channels
         self.flat_features = self.out_channels * self.h_out * self.w_out
-        self.mlp_input_features = self.flat_features + 9 if self.q_net else self.flat_features + 6
+        #self.mlp_input_features = self.flat_features + 9 if self.q_net else self.flat_features + 6
+        self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
 
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
 
     def forward(self, x):
 
-        if self.q_net:
-            speed, gear, rpm, images, prev_act, act = x
-        else:    
-            speed, gear, rpm, images, prev_act = x
+        if self.act_buf_len == 1:
+            if self.q_net:
+                speed, gear, rpm, images, prev_act, act = x
+            else:    
+                speed, gear, rpm, images, prev_act = x        
 
-        images = images.float() / 255.0
+            # Normalizar imágenes
+            images = images.float() / 255.0
 
-        x = F.relu(self.conv1(images))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
+            x = F.relu(self.conv1(images))
+            x = F.relu(self.conv2(x))
+            x = F.relu(self.conv3(x))
+            x = F.relu(self.conv4(x))
 
-        flat_features = num_flat_features(x)
-        assert flat_features == self.flat_features, f"x.shape:{x.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
-        x = x.view(-1, flat_features)
+            flat_features = num_flat_features(x)
+            assert flat_features == self.flat_features, f"x.shape:{x.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
+            x = x.view(-1, flat_features)
 
-        if self.q_net:
-            x = torch.cat((speed, gear, rpm, x, prev_act, act), -1)
+            # Concatenar características adicionales
+            if self.q_net:
+                x = torch.cat((speed, gear, rpm, x, prev_act, act), -1)
+            else:
+                x = torch.cat((speed, gear, rpm, x, prev_act), -1)
+        
+        elif self.act_buf_len == 2:
+            if self.q_net:
+                speed, gear, rpm, images, prev_act1, prev_act2, act = x
+            else:    
+                speed, gear, rpm, images, prev_act1, prev_act2 = x
+            # Normalizar imágenes
+            images = images.float() / 255.0
+
+            x = F.relu(self.conv1(images))
+            x = F.relu(self.conv2(x))
+            x = F.relu(self.conv3(x))
+            x = F.relu(self.conv4(x))
+
+            flat_features = num_flat_features(x)
+            assert flat_features == self.flat_features, f"x.shape:{x.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
+            x = x.view(-1, flat_features)
+
+
+            # Concatenar características adicionales
+            if self.q_net:
+                x = torch.cat((speed, gear, rpm, x, prev_act1, prev_act2, act), -1)
+            else:
+                x = torch.cat((speed, gear, rpm, x, prev_act1, prev_act2), -1)
         else:
-            x = torch.cat((speed, gear, rpm, x, prev_act), -1)
+            raise ValueError(f"Unsupported act_buf_len: {self.act_buf_len}. Try 1 or 2. If you want to use more, you need to modify the code.")
 
         x = self.mlp(x)
         return x
@@ -686,8 +718,8 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         super().__init__(observation_space, action_space)
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
-        #self.net = VanillaCNN(q_net=False)
-        self.net = CustomCNN(q_net=False, action_space_size=dim_act)
+        self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
+        #self.net = CustomCNN(q_net=False, action_space_size=dim_act)
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
         self.act_limit = act_limit
@@ -755,9 +787,10 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
 class VanillaCNNQFunction(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
-        #self.net = VanillaCNN(q_net=True)
+        
         action_space_size = action_space.shape[0]
-        self.net = CustomCNN(q_net=True, action_space_size=action_space_size)
+        self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
+        #self.net = CustomCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
 

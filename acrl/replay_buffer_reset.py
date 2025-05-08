@@ -10,7 +10,7 @@ checkpoint = load(checkpoint_path)
 replay_memory = checkpoint.memory
 
 try:
-    checkpoint.memory = []
+    checkpoint.memory = [] # FIXME esto no funciona correctamente, esta borrando cosas que no debería
     dump(checkpoint, checkpoint_path)
     print("Replay Buffer vaciado correctamente\n")
 except Exception as e:
