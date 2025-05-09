@@ -199,6 +199,7 @@ class AC_Interface(RealTimeGymInterface):
             print(f"PR: {self.best} Episode reward: {total_reward:.2f} Min reward: {min_reward:.2f} Max reward: {max_reward:.2f} Average reward: {avg_reward:.2f} \n")
         else:
             print("No rewards recorded for the previous episode.\n")
+            
         self.ep_rew = []
         
         self.reset_common()

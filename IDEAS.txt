@@ -45,6 +45,10 @@ Si se usan colores, ver tema de normalización -> No hacerlo pues no hay un data
 
 probar sin computo mixto
 
+Ver benchmark de rtgym
+
+Pasar todos los daños de auto en lugar del max
+
 Uso de curriculum learning para el entrenamiento:
     -Acelerar
     -Moverse en linea recta
