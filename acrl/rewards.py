@@ -242,7 +242,7 @@ class RewardFunction:
         avg_collision = sum(self.collision_buffer) / len(self.collision_buffer)
 
         # Si el auto no esta quieto y la mayoria de los frames del buffer son de bloqueo lateral, se considera que hay colisión
-        if telemetry_data["speed"] > self.threshold_speed and avg_collision > 0.5:
+        if telemetry_data["speed"] > 1 and avg_collision > 0.5:
             collision = True
         else:
             collision = False
