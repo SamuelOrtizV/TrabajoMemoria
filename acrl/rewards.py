@@ -278,5 +278,5 @@ class RewardFunction:
         """ speed = data["speed"]
         rpms = data["rpms"] """
 
-        print(f"{data} Collision: {collision} Gas-Brake Turn: {np.round(action, 2)}                        ", end="\r")
+        print(f"{data} Collision: {collision} Gas-Brake Turn: {np.round(action, 2)}    ", end="\r")
         

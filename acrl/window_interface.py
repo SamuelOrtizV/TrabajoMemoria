@@ -8,9 +8,10 @@ if platform.system() == "Windows":
     import win32gui
 
     class MSSWindowInterface(WindowInterface):
-        def __init__(self, window_name):
+        def __init__(self, window_name, fullscreen):
             super().__init__(window_name)
             self.sct = mss.mss()
+            self.fullscreen = fullscreen
 
         def screenshot(self):
             """
@@ -21,13 +22,22 @@ if platform.system() == "Windows":
 
             # Obtener las dimensiones de la ventana
             x, y, x1, y1 = win32gui.GetWindowRect(hwnd)
-            # Ajustar las dimensiones para excluir los bordes y la barra de título
-            monitor = {
-            "top": y + 32,
-            "left": x + self.w_diff // 2, 
-            "width": x1 - x - self.w_diff,
-            "height": y1 - y - 40
-            }
+
+            if self.fullscreen:
+                monitor = {
+                "top": y,
+                "left": x, 
+                "width": x1 - x,
+                "height": y1 - y
+                }
+            else:
+                # Ajustar las dimensiones para excluir los bordes y la barra de título
+                monitor = {
+                "top": y + 32,
+                "left": x + self.w_diff // 2, 
+                "width": x1 - x - self.w_diff,
+                "height": y1 - y - 40
+                }
 
             # Capturar la imagen con mss
             img = np.array(self.sct.grab(monitor))

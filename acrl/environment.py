@@ -60,6 +60,7 @@ class AC_Interface(RealTimeGymInterface):
         self.ep_rew = []
         self.action = None
         self.best = 0.0
+        self.time_step_duration = cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
 
         # Crear el visualizador
         self.visualizer = ImageVisualizer()
@@ -78,7 +79,7 @@ class AC_Interface(RealTimeGymInterface):
 
         while True:
             try:
-                self.window_interface = MSSWindowInterface("Assetto Corsa",)
+                self.window_interface = MSSWindowInterface("Assetto Corsa", self.fullscreen)
                 break
             except Exception as e:
                 print("Waiting for Assetto Corsa's window...                                                                        ", end="\r")
@@ -170,7 +171,7 @@ class AC_Interface(RealTimeGymInterface):
         else:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  #img[:, :, ::-1]  # reversed view for numpy RGB convention
             # shape is (height, width, channels) for cv2 images    
-        self.visualizer.update_image(img)  # Actualizar la imagen en el visualizador
+        #self.visualizer.update_image(img)  # Actualizar la imagen en el visualizador
         return img
 
     def reset_common(self):
@@ -199,7 +200,7 @@ class AC_Interface(RealTimeGymInterface):
             print(f"PR: {self.best} Episode reward: {total_reward:.2f} Min reward: {min_reward:.2f} Max reward: {max_reward:.2f} Average reward: {avg_reward:.2f} \n")
         else:
             print("No rewards recorded for the previous episode.\n")
-            
+
         self.ep_rew = []
         
         self.reset_common()
@@ -235,8 +236,9 @@ class AC_Interface(RealTimeGymInterface):
             # TODO: POR IMPLEMENTAR
             pass
 
-        """ self.reset_race()
-        time.sleep(0.5) """
+        #self.reset_race()
+        print("SE USO WAIT")
+        time.sleep(0.5)
         
 
     def get_obs_rew_terminated_info(self):
@@ -244,6 +246,11 @@ class AC_Interface(RealTimeGymInterface):
         returns the observation, the reward, and a terminated signal for end of episode
         obs must be a list of numpy arrays
         """
+
+        while not self.grab_data()["transmitting"]:
+            time.sleep(0.1)
+            print("Waiting for telemetry data...                                                                             ", end="\r")
+
         data = self.grab_data()
         img = self.grab_img()
 

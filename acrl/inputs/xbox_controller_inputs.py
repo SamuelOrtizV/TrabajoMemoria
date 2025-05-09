@@ -25,53 +25,79 @@ class XboxControllerReader:
         """
         pygame.init()
         pygame.joystick.init()
+        self.joystick = None
+        self.name = None
+        self.joystick_id = None
+
+        self._initialize_controller(total_wait_secs)
+
+    def _initialize_controller(self, total_wait_secs: int):
+        """
+        Intenta inicializar el controlador.
+        """
         try:
-            # Intenta inicializar el controlador conectando el primer control
+            if pygame.joystick.get_count() == 0:
+                raise pygame.error("No se encontró un controlador conectado.")
+
+            # Intenta inicializar el primer controlador disponible
             self.joystick = pygame.joystick.Joystick(0)
             self.joystick.init()
-        except pygame.error:
-            logging.warning(
-                "No se encontró un controlador. Asegúrate de que el controlador esté conectado y sea reconocido por Windows."
-            )
-            time.sleep(4)
-            sys.exit()
+            self.name = self.joystick.get_name()
+            self.joystick_id = self.joystick.get_id()
 
-        # Obtiene el nombre y el ID del controlador
-        self.name = self.joystick.get_name()
-        self.joystick_id = self.joystick.get_id()
+            # Espera algunos segundos antes de comenzar a leer el controlador
+            for delay in range(int(total_wait_secs), 0, -1):
+                print(
+                    f"Inicializando la lectura del controlador, esperando {delay} segundos para evitar lecturas incorrectas...",
+                    end="\r",
+                )
+                time.sleep(1)
 
-        # Espera algunos segundos antes de comenzar a leer el controlador
-        for delay in range(int(total_wait_secs), 0, -1):
-            print(
-                f"Inicializando la lectura del controlador, esperando {delay} segundos para evitar lecturas incorrectas...",
-                end="\r",
-            )
-            time.sleep(1)
+            print(f"Capturando entrada de: {self.name} (ID: {self.joystick_id})\n")
 
-        print(f"Capturando entrada de: {self.name} (ID: {self.joystick_id})\n")
+        except pygame.error as e:
+            logging.warning(f"No se encontró un controlador: {e}")
+            self.joystick = None
 
-    def read(self) -> Tuple[str, str]:
+    def _check_connection(self):
+        """
+        Verifica si el controlador sigue conectado.
+        Si no está conectado, intenta reconectarlo.
+        """
+        if self.joystick is None or not self.joystick.get_init():
+            print("Controlador desconectado. Intentando reconectar...")
+            self._initialize_controller(total_wait_secs=1)
+
+    def read(self) -> np.ndarray:
         """
         Lee el estado actual del controlador.
 
         Salida:
-        - lx: Valor actual del eje X del stick izquierdo, en el rango [-1, 1]
-        - lt: Valor actual del gatillo izquierdo, en el rango [-1, 1]
-        - rt: Valor actual del gatillo derecho, en el rango [-1, 1]
+        - np.ndarray: Array con [throttle_brake, steering]
+        - bool: Indica si el controlador está conectado
         """
-        #_ = pygame.event.get()
-        pygame.event.pump()  # Actualiza el estado de los eventos del joystick
-        lx, lt, rt = (
-            self.joystick.get_axis(0),
-            self.joystick.get_axis(4),
-            self.joystick.get_axis(5),
-        )
+        self._check_connection()
 
-        steering = lx
-        throttle_brake = (rt - lt) / 2
+        if self.joystick is None:
+            # Si no hay controlador conectado, devuelve valores por defecto
+            return np.array([0.0, 0.0], dtype=np.float32)
 
-        return np.array([throttle_brake, steering], dtype=np.float32)
-    
+        try:
+            pygame.event.pump()  # Actualiza el estado de los eventos del joystick
+            lx, lt, rt = (
+                self.joystick.get_axis(0),
+                self.joystick.get_axis(4),
+                self.joystick.get_axis(5),
+            )
+
+            steering = lx
+            throttle_brake = (rt - lt) / 2
+
+            return np.array([throttle_brake, steering], dtype=np.float32)
+        except pygame.error as e:
+            logging.warning(f"Error al leer el controlador: {e}")
+            return np.array([0.0, 0.0], dtype=np.float32)
+
 
 def imprimir_estado_controlador() -> None:
     """
@@ -83,9 +109,11 @@ def imprimir_estado_controlador() -> None:
 
     try:
         while True:
-            entrada = control.read()  # Llama al método read
-            #print(f"Valor del stick izquierdo (lx): {lx:.2f}, Gatillo izquierdo (lt): {lt:.2f}, Gatillo derecho (rt): {rt:.2f}", end="\r")
-            print(f"Dirección: {entrada[1]}, Acelerar frenar: {entrada[0]}", end="\r")
+            entrada, conectado = control.read()  # Llama al método read
+            if conectado:
+                print(f"Dirección: {entrada[1]:.2f}, Acelerar/Frenar: {entrada[0]:.2f}", end="\r")
+            else:
+                print("Esperando reconexión del controlador...", end="\r")
             time.sleep(0.1)  # Pausa corta para evitar un loop muy rápido
     except KeyboardInterrupt:
         print("\nSaliendo...")
