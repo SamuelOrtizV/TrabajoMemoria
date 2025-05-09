@@ -14,5 +14,9 @@ __pycache__/
 .venv/
 
 acrl/__pycache__/
+
+acrl/inputs/__pycache__/
+
+
  
  
