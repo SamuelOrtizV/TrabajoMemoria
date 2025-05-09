@@ -135,8 +135,7 @@ class AC_Interface(RealTimeGymInterface):
         if self.gamepad:
             if control is not None:
                 if not self.human_mode:
-                    self.controller.control_gamepad(control)
-                    print("bruh")               
+                    self.controller.control_gamepad(control)          
         else:
             pass
             # Por implementar para AC
