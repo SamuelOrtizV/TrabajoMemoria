@@ -180,7 +180,7 @@ class RewardFunction:
             mistake = True
         
         # Penalty for car damage
-        for i in range(telemetry_data["car_damage"]):
+        for i in range(len(telemetry_data["car_damage"])):
             if telemetry_data["car_damage"][i] > self.car_damage[i]:            
                 reward += self.penalty_car_damage #* (telemetry_data["car_damage"] - self.car_damage)
                 self.car_damage[i] = telemetry_data["car_damage"][i]
