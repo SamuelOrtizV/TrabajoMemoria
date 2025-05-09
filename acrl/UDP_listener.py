@@ -44,14 +44,16 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
         laps = int(parts[3].split(": ")[1])
         track_position = float(parts[4].split(": ")[1])
         tyres_out = int(parts[5].split(": ")[1])
-        car_damage = float(parts[6].split(": ")[1])
+        #car_damage = float(parts[6].split(": ")[1])
+        car_damage_str = parts[6].split(": ")[1]
+        car_damage = [float(d) for d in car_damage_str.split("_")]
         acc_x = float(parts[7].split(": ")[1])
         
         # Redondear los valores a 2 decimales
         speed = round(speed, 2)
         rpms = round(rpms, 2)
         track_position = round(track_position, 5)
-        car_damage = round(car_damage, 4)
+        car_damage = [round(d, 4) for d in car_damage]
         acc_x = round(acc_x, 2)
         
         # Almacenar los valores en un diccionario
@@ -76,7 +78,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "laps": 0,
             "track_position": 0.0,
             "tyres_out": 0,
-            "car_damage": 0.0,
+            "car_damage": [0.0, 0.0, 0.0, 0.0],
             "acc_x": 0.0,
             "transmitting": False
         }
@@ -94,7 +96,7 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "laps": 0,
             "track_position": 0.0,
             "tyres_out": 0,
-            "car_damage": 0.0,
+            "car_damage": [0.0, 0.0, 0.0, 0.0],
             "acc_x": 0.0,
             "transmitting": False
         }

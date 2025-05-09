@@ -92,7 +92,7 @@ class RewardFunction:
         self.previous_checkpoint = None
         self.previous_lap = 0
 
-        self.car_damage = 0.0
+        self.car_damage = [0.0, 0.0, 0.0, 0.0]
 
         self.last_action = None  # last action taken by the car
 
@@ -180,12 +180,13 @@ class RewardFunction:
             mistake = True
         
         # Penalty for car damage
-        if telemetry_data["car_damage"] > self.car_damage:            
-            reward += self.penalty_car_damage #* (telemetry_data["car_damage"] - self.car_damage)
-            self.car_damage = telemetry_data["car_damage"]
+        for i in range(telemetry_data["car_damage"]):
+            if telemetry_data["car_damage"][i] > self.car_damage[i]:            
+                reward += self.penalty_car_damage #* (telemetry_data["car_damage"] - self.car_damage)
+                self.car_damage[i] = telemetry_data["car_damage"][i]
 
         # Penalty for continuous collision
-        if collision and telemetry_data["car_damage"] > 0:
+        if collision and max(telemetry_data["car_damage"]) > 0:
             reward += self.penalty_collision
             #mistake = True
 
@@ -203,7 +204,7 @@ class RewardFunction:
                 self.mistake_counter = 0
                 self.no_mistake_counter = 0
 
-        if telemetry_data["car_damage"] > self.threshold_damage:
+        if max(telemetry_data["car_damage"]) > self.threshold_damage:
             terminated = True  # The episode ends if the car is damaged beyond the threshold
 
         max_reward = max(1, abs(reward))
@@ -261,7 +262,7 @@ class RewardFunction:
         self.previous_checkpoint = None
         self.previous_lap = 0
 
-        self.car_damage = 0.0
+        self.car_damage = [0.0, 0.0, 0.0, 0.0]
         self.last_action = None
 
         self.position_buffer.clear()

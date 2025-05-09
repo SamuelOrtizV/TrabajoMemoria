@@ -138,7 +138,7 @@ def acMain(ac_version):
     carDamage = CarDamageIndicator(appWindow, 20, 200, "Car Damage:") """
     
     ac.log("Hello from Python!")
-    log_message = "Car Damage: {}, RPMs: {}, Gear: {}, TyresOut: {}, accG: {}".format(max(info.physics.carDamage), info.physics.rpms, info.physics.gear, info.physics.numberOfTyresOut, [info.physics.accG[0], info.physics.accG[1], info.physics.accG[2]])
+    log_message = "Car Damage: {}, RPMs: {}, Gear: {}, TyresOut: {}, accG: {}".format(info.physics.carDamage[1], info.physics.rpms, info.physics.gear, info.physics.numberOfTyresOut, [info.physics.accG[0], info.physics.accG[1], info.physics.accG[2]])
     ac.log(log_message)
     ac.addRenderCallback(appWindow, onFormRender)
     return " "
@@ -176,16 +176,18 @@ def onFormRender(deltaT):
 
     # Obtener el daño del auto    
     if hasattr(info.physics, 'carDamage'):
-        damage = info.physics.carDamage
+        damage = info.physics.carDamage        
         try:
             #carDamage.setCarDamageValue(damage)
+            damage = "{}_{}_{}_{}".format(damage[0], damage[1], damage[2], damage[3])
             pass
         except Exception as e:
             ac.log("Error al obtener el daño del auto: {}".format(e))
+            #damage = [0,0,0,0]
 
     # Crear el mensaje con los datos
     message = "Speed: {}, RPMs: {}, Gear: {}, Laps: {}, Track Position: {}, Tyres Out: {}, Car Damage: {}, Acc X: {}".format(
-        velocidad, rpms, gear, vueltas, posicion, ruedas_fuera, max(damage), acc_x
+        velocidad, rpms, gear, vueltas, posicion, ruedas_fuera, damage, acc_x
     )
 
     # Enviar el mensaje a través del socket
