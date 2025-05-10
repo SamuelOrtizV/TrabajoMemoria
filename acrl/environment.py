@@ -111,7 +111,9 @@ class AC_Interface(RealTimeGymInterface):
                                                 threshold_smooth_actions=cfg.REWARD_CONFIG['THRESHOLD_SMOOTH_ACTIONS'],
                                                 threshold_damage=cfg.REWARD_CONFIG['THRESHOLD_DAMAGE'],
                                                 hist_len=self.img_hist_len,
-                                                time_step_duration=cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
+                                                time_step_duration=cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration'],
+                                                mistake_collision=cfg.REWARD_CONFIG['MISTAKE_COLLISION'],
+                                                mistale_out_of_track=cfg.REWARD_CONFIG['MISTAKE_OUT_OF_TRACK']
                                                 )
                                               
 

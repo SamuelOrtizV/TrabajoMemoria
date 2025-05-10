@@ -29,7 +29,9 @@ class RewardFunction:
                  time_step_duration=0.05,
                  buffer_lapse=0.5,
                  direction_threshold=0.2,
-                 acc_x_threshold=0.1                             
+                 acc_x_threshold=0.1,
+                 mistake_collision=False,
+                 mistale_out_of_track=False                             
                  ):
         """
         Instantiates a reward function for AC
@@ -85,6 +87,9 @@ class RewardFunction:
         self.collision_buffer = deque(maxlen=self.buffer_size)
         self.direction_threshold = direction_threshold 
         self.acc_x_threshold = acc_x_threshold
+        self.mistake_collision = mistake_collision
+        self.mistake_out_of_track = mistale_out_of_track
+
         self.step_counter = 0
         self.mistake_counter = 0
         self.no_mistake_counter = 0
@@ -156,7 +161,8 @@ class RewardFunction:
         # Penalty for going off track
         if telemetry_data["tyres_out"] > 0:
             reward += self.penalty_tyres_out * telemetry_data["tyres_out"]
-            #mistake = True 
+            if self.mistake_out_of_track:
+                mistake = True 
 
         """ # Penalty and reward for acceleration when starting from 0
         if telemetry_data["gear"] == 1:
@@ -188,7 +194,8 @@ class RewardFunction:
         # Penalty for continuous collision
         if collision and max(telemetry_data["car_damage"]) > 0:
             reward += self.penalty_collision
-            #mistake = True
+            if self.mistake_collision:
+                mistake = True
 
         # Termination conditions
         if mistake:
