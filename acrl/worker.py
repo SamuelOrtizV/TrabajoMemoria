@@ -64,7 +64,7 @@ class CustomRolloutWorker(RolloutWorker):
             record_model_path (str): Ruta donde se guardarán los pesos del modelo cuando se rompa el récord.
         """
         super().__init__(*args, **kwargs)
-        self.best_test_reward = -100.0  # Variable para rastrear el récord en pruebas
+        self.best_test_reward = 0.0  # Variable para rastrear el récord en pruebas
         self.weights = None
 
     def run_episode(self, max_samples=None, train=False):
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         sample_compressor=get_local_buffer_sample_imgs,  #cfg_obj.SAMPLE_COMPRESSOR, #
         device= "cuda" if cfg.CUDA_INFERENCE else "cpu",  # True if CUDA, False if CPU (rollout worker)
         max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE,
-        standalone=True,
+        standalone=False,
         server_ip=cfg.SERVER_IP_FOR_WORKER,
         #model_path_history=model_path_history,  # not used when model_history is -1
         crc_debug=CRC_DEBUG)
@@ -179,4 +179,4 @@ if __name__ == "__main__":
     # Note: at this point, the RolloutWorker is not collecting samples yet.
     # Nevertheless, it connects to the Server.
 
-    my_worker.run(test_episode_interval=2, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
+    my_worker.run(test_episode_interval=20, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
