@@ -49,6 +49,8 @@ Ver benchmark de rtgym
 
 Pasar todos los daños de auto en lugar del max
 
+Guardar pesos de los PR
+
 Uso de curriculum learning para el entrenamiento:
     -Acelerar
     -Moverse en linea recta

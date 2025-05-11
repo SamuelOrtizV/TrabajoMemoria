@@ -1,5 +1,5 @@
 from UDP_listener import udp_listener
-from acrl.inputs.xbox_controller_inputs import XboxControllerReader
+from inputs.xbox_controller_inputs import XboxControllerReader
 from collections import deque
 import time
 
@@ -22,7 +22,7 @@ block_buffer = deque(maxlen=buffer_size)
 while True:
     try:
         # Lee el estado del controlador
-        steering, throttle_brake = controller.read()
+        throttle_brake, steering = controller.read()
 
         # Lee los datos del UDP
         data = udp_listener()
@@ -41,14 +41,14 @@ while True:
         # o si hay acelareción lateral y no hay giro en ese sentido, se considera que hay bloqueo lateral
         bloqueo_lateral = (avg_steering > direction_threshold and not (acc_x < -acc_x_threshold)) or \
                           (avg_steering < -direction_threshold and not (acc_x > acc_x_threshold)) or \
-                          (acc_x > acc_x_threshold and avg_steering > 0.05) or \
-                          (acc_x < -acc_x_threshold and avg_steering < -0.05)
+                          (acc_x > acc_x_threshold and avg_steering > -0.05) or \
+                          (acc_x < -acc_x_threshold and avg_steering < 0.05)
         
         block_buffer.append(bloqueo_lateral)
         # Calcula el promedio de bloqueo lateral
         avg_block = sum(block_buffer) / len(block_buffer)
         # Si el promedio de bloqueo lateral es mayor a 0.5, se considera que hay bloqueo
-        if avg_block > 0.5:
+        if avg_block > 0.4 and data["speed"] > 1:
             bloqueo_lateral = True
         else:
             bloqueo_lateral = False

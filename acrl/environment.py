@@ -61,6 +61,8 @@ class AC_Interface(RealTimeGymInterface):
         self.action = None
         self.best = 0.0
         self.time_step_duration = cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
+        self.max_speed = 100 # car stops accelerating if speed is above this limit
+        self.speed = 0.0
 
         # Crear el visualizador
         self.visualizer = ImageVisualizer()
@@ -134,6 +136,9 @@ class AC_Interface(RealTimeGymInterface):
             control: np.array: [gas-brake,steering] values between -1.0 and 1.0
         """
         self.action = control
+
+        if self.speed > self.max_speed:
+            control[0] = max(0, control[0])
 
         if self.gamepad:
             if control is not None:
@@ -239,7 +244,7 @@ class AC_Interface(RealTimeGymInterface):
             pass
 
         #self.reset_race()
-        print("SE USO WAIT")
+        #print("SE USO WAIT")
         time.sleep(0.5)
         
 
@@ -249,12 +254,14 @@ class AC_Interface(RealTimeGymInterface):
         obs must be a list of numpy arrays
         """
 
-        while not self.grab_data()["transmitting"]:
+        """while not self.grab_data()["transmitting"]:
             time.sleep(0.1)
-            print("Waiting for telemetry data...                                                                             ", end="\r")
+            print("Waiting for telemetry data...                                                                             ", end="\r") """
 
         data = self.grab_data()
         img = self.grab_img()
+
+        self.speed = data["speed"]
 
         speed = np.array([
             data["speed"],

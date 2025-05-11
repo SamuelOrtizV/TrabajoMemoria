@@ -140,7 +140,7 @@ class RewardFunction:
 
         # Reward for progress on the track
         if progress > 0.0:  # If we did progress on the track
-            reward += self.reward_progress
+            reward += self.reward_progress * min((telemetry_data["speed"])/self.threshold_speed, 1) #Full reward only if above speed threshold
 
         """ # Reward for speed
         if telemetry_data["speed"] > self.threshold_speed:
@@ -242,15 +242,15 @@ class RewardFunction:
         # o si hay acelareción lateral y no hay giro en ese sentido, se considera que hay bloqueo lateral
         bloqueo_lateral = (avg_steering > self.direction_threshold and not (acc_x < -self.acc_x_threshold)) or \
                           (avg_steering < -self.direction_threshold and not (acc_x > self.acc_x_threshold)) or \
-                          (acc_x > self.acc_x_threshold and avg_steering > 0.05) or \
-                          (acc_x < -self.acc_x_threshold and avg_steering < -0.05)
+                          (acc_x > self.acc_x_threshold and avg_steering > -0.05) or \
+                          (acc_x < -self.acc_x_threshold and avg_steering < 0.05) # 0.05 is the steering deadzone for the analog controller anything between is considered 0
         
         self.collision_buffer.append(bloqueo_lateral)
 
         avg_collision = sum(self.collision_buffer) / len(self.collision_buffer)
 
-        # Si el auto no esta quieto y la mayoria de los frames del buffer son de bloqueo lateral, se considera que hay colisión
-        if telemetry_data["speed"] > 1 and avg_collision > 0.5:
+        # Si el auto no esta quieto y la muchos de los frames del buffer son de bloqueo lateral, se considera que hay colisión
+        if telemetry_data["speed"] > 1 and avg_collision > 0.4:
             collision = True
         else:
             collision = False
