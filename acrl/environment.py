@@ -180,7 +180,7 @@ class AC_Interface(RealTimeGymInterface):
         else:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  #img[:, :, ::-1]  # reversed view for numpy RGB convention
             # shape is (height, width, channels) for cv2 images    
-        #self.visualizer.update_image(img)  # Actualizar la imagen en el visualizador
+        self.visualizer.update_image(img)  # Actualizar la imagen en el visualizador
         return img
 
     def reset_common(self):
@@ -283,7 +283,7 @@ class AC_Interface(RealTimeGymInterface):
         info = {}       
         rew = np.float32(rew)
 
-        if data["track_position"] > self.best and data["track_position"] < 0.995:
+        if data["track_position"] > self.best and data["track_position"] < 0.98:
             self.best = data["track_position"]
 
         return obs, rew, terminated, info

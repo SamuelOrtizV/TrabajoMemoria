@@ -117,7 +117,7 @@ class RewardFunction:
         mistake = False  # flag to check if a mistake happened
         collision = self.collision_detection(telemetry_data, action)
 
-        track_position = 0.0 if telemetry_data["track_position"] >= 0.995 else telemetry_data["track_position"]
+        track_position = telemetry_data["track_position"]
         self.position_buffer.append(track_position)  # we add the current position to the buffer
         progress = self.position_buffer[-1] - self.position_buffer[0]
         if self.previous_checkpoint is None:
@@ -128,8 +128,8 @@ class RewardFunction:
 
         # Reward for completing a lap
         if telemetry_data["laps"] > self.previous_lap:
-            """ reward += self.reward_laps_weight
-            self.previous_lap = telemetry_data["laps"] """
+            """ reward += self.reward_laps_weight"""
+            self.previous_lap = telemetry_data["laps"] 
             self.previous_checkpoint = 0.0
 
         # Reward for reaching a checkpoint
