@@ -772,8 +772,8 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         super().__init__(observation_space, action_space)
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
-        #self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
-        self.net = CustomCNN(q_net=False, action_space_size=dim_act)
+        self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
+        #self.net = CustomCNN(q_net=False, action_space_size=dim_act)
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
         self.act_limit = act_limit
@@ -879,8 +879,8 @@ class VanillaCNNQFunction(nn.Module):
         super().__init__()
         
         action_space_size = action_space.shape[0]
-        #self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
-        self.net = CustomCNN(q_net=True, action_space_size=action_space_size)
+        self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
+        #self.net = CustomCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
 

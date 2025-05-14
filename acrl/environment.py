@@ -296,7 +296,7 @@ class AC_Interface(RealTimeGymInterface):
         gear = spaces.Box(low=0.0, high=10, shape=(1, ))
         rpm = spaces.Box(low=0.0, high=np.inf, shape=(1, ))
 
-        # en caso de normalizar los colores, no se muy bien de donde viene esto:
+        # en caso de normalizar los colores, esto creo que solo es realizable en caso de tener un dataset:
         """ spaces.Box(
             low=-2.1179,  # Aproximado de (0 - 0.485) / 0.229 para el canal rojo
             high=2.6400,  # Aproximado de (1 - 0.406) / 0.224 para el canal azul
