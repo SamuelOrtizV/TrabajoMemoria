@@ -135,6 +135,8 @@ class AC_Interface(RealTimeGymInterface):
         Args:
             control: np.array: [gas-brake,steering] values between -1.0 and 1.0
         """
+        control = -control
+
         self.action = control
 
         if self.speed > self.max_speed:
