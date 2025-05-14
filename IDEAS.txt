@@ -61,3 +61,5 @@ Uso de curriculum learning para el entrenamiento:
     -Usar otras pistas
     -Mejorar los tiempos
     -Competir contra otros autos
+
+Probar que cnn estime distancia (creo que esto lo hace el critico) o que estime coordenadas

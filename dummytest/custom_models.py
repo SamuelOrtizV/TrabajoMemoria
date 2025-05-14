@@ -21,56 +21,6 @@ import tmrl.config.config_constants as cfg
 from inputs.xbox_controller_inputs import XboxControllerReader
 # SUPPORTED ============================================================================================================
 
-def view_input_tensor(x):
-
-    "Allows to visualize the information passed down to the agent"
-
-    import matplotlib.pyplot as plt
-    print("\n--- [DEBUG] Tipos de entrada en forward ---")
-    for i, item in enumerate(x):
-        print(f"x[{i}] type: {type(item)}, shape: {getattr(item, 'shape', 'N/A')}")         
-
-    # Índice del batch que quieres visualizar
-    i = 0
-
-    # Desempaquetar los datos del batch
-    speed, gear, rpm, images, prev_act1, prev_act2 = x  # Ajusta esto si tienes más/menos elementos
-
-    # Seleccionar el i-ésimo elemento de cada uno
-    s_val = speed[i].cpu().numpy().item()
-    g_val = gear[i].cpu().numpy().item()
-    r_val = rpm[i].cpu().numpy().item()
-    pa1_val = prev_act1[i].cpu().numpy()
-    pa2_val = prev_act2[i].cpu().numpy()
-
-    # Armar string para el título
-    title_str = f"Speed: {s_val:.2f}, Gear: {g_val:.0f}, RPM: {r_val:.0f}, " \
-                f"Prev Act1: {pa1_val}, Prev Act2: {pa2_val}"
-
-    # Extraer imágenes
-    img_tensor = images[i]  # shape: (12, H, W)
-
-    # Número de imágenes RGB históricas
-    num_rgb_frames = img_tensor.shape[0] // 3
-
-    # Crear figura
-    fig, axs = plt.subplots(1, num_rgb_frames, figsize=(4 * num_rgb_frames, 4))
-    fig.suptitle(title_str, fontsize=12)
-
-    # Asegurar iterabilidad
-    if num_rgb_frames == 1:
-        axs = [axs]
-
-    for j in range(num_rgb_frames):
-        rgb = img_tensor[j*3:(j+1)*3].cpu().numpy()
-        rgb = rgb.transpose(1, 2, 0)
-        axs[j].imshow(rgb)
-        axs[j].set_title(f"Frame {j}")
-        axs[j].axis('off')
-
-    plt.tight_layout()
-    plt.show()
-
 
 # Spinup MLP: =======================================================
 # Adapted from the SAC implementation of OpenAI Spinup
@@ -722,10 +672,8 @@ class CustomCNN(Module):
         self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
-
+        
     def forward(self, x):
-
-        #view_input_tensor(x)
 
         if self.act_buf_len == 1:
             if self.q_net:
@@ -749,7 +697,6 @@ class CustomCNN(Module):
                 speed, gear, rpm, images, prev_act1, prev_act2, act = x
             else:    
                 speed, gear, rpm, images, prev_act1, prev_act2 = x
-
             # Normalizar imágenes
             images = images.float() / 255.0
 
@@ -1093,4 +1040,3 @@ class RNNActorCritic(nn.Module):
         self.actor = SquashedGaussianRNNActor(observation_space, action_space, rnn_size, rnn_len, mlp_sizes, activation)
         self.q1 = RNNQFunction(observation_space, action_space, rnn_size, rnn_len, mlp_sizes, activation)
         self.q2 = RNNQFunction(observation_space, action_space, rnn_size, rnn_len, mlp_sizes, activation)
-
