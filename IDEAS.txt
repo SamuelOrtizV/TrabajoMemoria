@@ -2,30 +2,12 @@ Probar el modelo desde lo más basíco e ir descartando problemas.
 
 Reunir datos en una pista simple y una vez funcione implementar otras más complejas
 
-Images dropout
-
-Velocimetro en pantalla
-
 Establecer una resolucion para el entrenamiento -> (480 x 270) o (240 x 135)
 
 Establecer un tiempo de vision, 1,5s?
 
     Establecer que los ultimos frames capturen por ejemplo el ultimo segundo de trayecto, pero no tomar frames cada 200ms sino que todo lo rapido que se pueda y que cada frame 
     tome los 5 frames anteriores separados por 200ms
-
-Ver que tanto afecta la longitud de la secuencia, un paper ucupo casi 23 por segundo
-
-CNN solo es casi 4 veces más rapida que CNN_RNN Entrenando al maximo de lo que da mi gpu
-
-AVERIGUAR CUÁNTOS PARÁMETROS TIENE EL MODELO
-
-Ver si usar una neurona para aceleracion y freno o si usar 2 independientes
-
-Ver sincronización imagenes de entrada
-
-Ver replay buffer y como se está usando
-
-ver que el batch se esté cargando bien en el buffer
 
 
 -----
@@ -35,8 +17,6 @@ guardado de replays cada cierto tiempo para ver el progreso
 
 recompensa por mejorar tiempo de vuelta
 
-ver si quitar datos de telemetría como espacio de observación (rpms, vel, gear)
-
 explorar hiperparametros
 
 recompensas por controles dados, penalizar cambios bruscos
@@ -44,12 +24,6 @@ recompensas por controles dados, penalizar cambios bruscos
 Si se usan colores, ver tema de normalización -> No hacerlo pues no hay un dataset que normalizar ni se usara una cnn pre entrenada
 
 probar sin computo mixto
-
-Ver benchmark de rtgym
-
-Pasar todos los daños de auto en lugar del max
-
-Guardar pesos de los PR
 
 Uso de curriculum learning para el entrenamiento:
     -Acelerar
@@ -64,4 +38,12 @@ Uso de curriculum learning para el entrenamiento:
 
 Probar que cnn estime distancia (creo que esto lo hace el critico) o que estime coordenadas
 
-Probar la cnn de forma externa con algun dataset de prueba
+
+
+Inicializar bias en log_std_layer (self.log_std_layer.bias.data.fill_(-1.0)) y tal vez mu_layer (para que acelere al inicio)
+
+Balancear escalas -> normalizar speed, rpm, gear
+
+Monitorear std, mu y logp_pi a lo largo del tiempo (sin clamp)
+
+

@@ -55,6 +55,7 @@ import numpy as np
 import itertools
 import datetime
 
+# Custom rollout worker para poder guardar los pesos de los mejores desempeños
 class CustomRolloutWorker(RolloutWorker):
     def __init__(self, *args, **kwargs):
         """
@@ -165,7 +166,7 @@ if not model_path_history.exists():
 # Instantiation of the RolloutWorker object:
 
 if __name__ == "__main__":
-    my_worker = RolloutWorker(
+    my_worker = CustomRolloutWorker(
         env_cls=env_cls,
         actor_module_cls=actor_module_cls,
         sample_compressor=get_local_buffer_sample_imgs,  #cfg_obj.SAMPLE_COMPRESSOR, #

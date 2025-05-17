@@ -61,7 +61,7 @@ class AC_Interface(RealTimeGymInterface):
         self.action = None
         self.best = 0.0
         self.time_step_duration = cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
-        self.max_speed = 100 # car stops accelerating if speed is above this limit
+        self.max_speed = cfg.ENV_CONFIG['MAX_SPEED'] # car stops accelerating if speed is above this limit
         self.speed = 0.0
 
         # Crear el visualizador
@@ -139,8 +139,6 @@ class AC_Interface(RealTimeGymInterface):
 
         if self.speed > self.max_speed:
             control[0] = min(0, control[0])
-        
-        control[0] = max(0, control[0]) #Evitar que frene
 
         if self.gamepad:
             if control is not None:
@@ -216,15 +214,7 @@ class AC_Interface(RealTimeGymInterface):
         data = self.grab_data()
         img = self.grab_img()
 
-        speed = np.array([
-            data["speed"],
-        ], dtype='float32')
-        gear = np.array([
-            data["gear"],
-        ], dtype='float32')
-        rpm = np.array([
-            data["rpms"],
-        ], dtype='float32')
+        speed, gear, rpm = self.normalize_telemetry(data)
 
         for _ in range(self.img_hist_len):
             self.img_hist.append(img)
@@ -265,15 +255,7 @@ class AC_Interface(RealTimeGymInterface):
 
         self.speed = data["speed"]
 
-        speed = np.array([
-            data["speed"],
-        ], dtype='float32')
-        gear = np.array([
-            data["gear"],
-        ], dtype='float32')
-        rpm = np.array([
-            data["rpms"],
-        ], dtype='float32')
+        speed, gear, rpm = self.normalize_telemetry(data)
 
         rew, terminated = self.reward_function.compute_reward(data, self.action)
         self.ep_rew.append(rew)
@@ -292,9 +274,9 @@ class AC_Interface(RealTimeGymInterface):
         """
         must be a Tuple
         """
-        speed = spaces.Box(low=0.0, high=1000.0, shape=(1, ))
-        gear = spaces.Box(low=0.0, high=10, shape=(1, ))
-        rpm = spaces.Box(low=0.0, high=np.inf, shape=(1, ))
+        speed = spaces.Box(low=0.0, high=1.0, shape=(1, ))
+        gear = spaces.Box(low=0.0, high=1.0, shape=(1, ))
+        rpm = spaces.Box(low=0.0, high=1.0, shape=(1, ))
 
         # en caso de normalizar los colores, esto creo que solo es realizable en caso de tener un dataset:
         """ spaces.Box(
@@ -325,6 +307,25 @@ class AC_Interface(RealTimeGymInterface):
         initial action at episode start
         """
         return np.array([0.0, 0.0], dtype='float32') # Cambiar a [0.0, 0.0, 0.0] para gas brake y steering
+    
+    def normalize_telemetry(self, data):
+        max_speed = 400
+        max_gear = 10
+        max_rpm = 20000
+
+        speed = np.array([
+            data["speed"]/max_speed,
+        ], dtype='float32')
+        gear = np.array([
+            data["gear"]/max_gear,
+        ], dtype='float32')
+        rpm = np.array([
+            data["rpms"]/max_rpm,
+        ], dtype='float32')
+
+        return speed, gear, rpm
+
+
 
 import tkinter as tk  
 from PIL import Image, ImageTk

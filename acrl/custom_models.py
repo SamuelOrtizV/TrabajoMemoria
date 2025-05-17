@@ -115,6 +115,7 @@ class SquashedGaussianMLPActor(TorchActorModule):
         self.log_std_layer = nn.Linear(hidden_sizes[-1], dim_act)
         self.act_limit = act_limit
 
+
     def forward(self, obs, test=False, with_logprob=True):
         x = torch.cat(obs, -1) if self.tuple_obs else torch.flatten(obs, start_dim=1)
         net_out = self.net(x)
@@ -722,6 +723,7 @@ class CustomCNN(Module):
         self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
+        
 
     def forward(self, x):
 
@@ -772,13 +774,32 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         super().__init__(observation_space, action_space)
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
+
         self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
         #self.net = CustomCNN(q_net=False, action_space_size=dim_act)
+        
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
+
         self.act_limit = act_limit
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
+
+        # Cargar pesos y sesgos de mu_layer esto es para que inicie acelerando y yendo derecho
+        desired_action = torch.tensor([0.5, 0.0])  # En el espacio final de acción, eso es si se usa un espacio de accion de 2
+        unsquashed = torch.atanh(desired_action)  # Inverso de tanh
+
+        with torch.no_grad():
+            nn.init.zeros_(self.mu_layer.weight)  # Sin contribución de la red
+            self.mu_layer.bias.copy_(unsquashed)
+        
+        # Cargar pesos y sesgos de log_std_layer esto es para que inicie con una variación no muy grande
+        """ nn.init.uniform_(self.log_std_layer.weight, -3e-3, 3e-3)
+        nn.init.constant_(self.log_std_layer.bias, -0.5) """
+
+        # Debug TODO: borrar 
+        print("mu_layer.bias:", self.mu_layer.bias.data)
+        print("log_std_layer.bias:", self.log_std_layer.bias.data)
 
     def forward(self, obs, test=False, with_logprob=True):
         
@@ -806,8 +827,8 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
         #std = F.softplus(log_std) + EPSILON # Alternativa
         std = torch.exp(log_std)
-        std = torch.clamp(std, EPSILON)  # Clamping std to avoid numerical issues
-        std = torch.nan_to_num(std, nan=1.0, posinf=1.0, neginf=1.0)  # Reemplaza NaN e infinitos
+        #std = torch.clamp(std, EPSILON)  # Clamping std to avoid numerical issues
+        #std = torch.nan_to_num(std, nan=1.0, posinf=1.0, neginf=1.0)  # Reemplaza NaN e infinitos
         
         pi_distribution = Normal(mu, std)
         if test:
@@ -818,17 +839,36 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         if with_logprob:
             logp_pi = pi_distribution.log_prob(pi_action).sum(axis=-1)
             # NB: this is from Spinup:
-            #logp_pi -= (2 * (np.log(2) - pi_action - F.softplus(-2 * pi_action))).sum(axis=1)  # FIXME: this formula is mathematically wrong, no idea why it seems to work
+            logp_pi -= (2 * (np.log(2) - pi_action - F.softplus(-2 * pi_action))).sum(axis=1)  # FIXME: this formula is mathematically wrong, no idea why it seems to work
             # Whereas SB3 does this:
-            logp_pi -= torch.sum(torch.log(1 - torch.tanh(pi_action) ** 2 + EPSILON), dim=1)  # TODO: double check
+            #logp_pi -= torch.sum(torch.log(1 - torch.tanh(pi_action) ** 2 + EPSILON), dim=1)  # TODO: double check
             # # log_prob -= th.sum(th.log(1 - actions**2 + self.epsilon), dim=1)
+
+            """ if not test:
+                mu_vals = mu.mean(dim=0).detach().cpu().numpy()
+                std_vals = std.mean(dim=0).detach().cpu().numpy()
+                pi_vals = pi_action.mean(dim=0).detach().cpu().numpy()
+                logp_val = logp_pi.mean().item()
+
+                print(
+                    f"mu: [{mu_vals[0]:6.3f}, {mu_vals[1]:6.3f}] "
+                    f"std: [{std_vals[0]:6.3f}, {std_vals[1]:6.3f}] "
+                    f"pi_action: [{pi_vals[0]:6.3f}, {pi_vals[1]:6.3f}] "
+                    f"logp_pi: {logp_val:7.4f}"
+                ) """
+
         else:
             logp_pi = None
 
+        #pi_action_old = pi_action
+
+        
         pi_action = torch.tanh(pi_action)
         pi_action = self.act_limit * pi_action
 
         # pi_action = pi_action.squeeze()
+
+        #print("mu: ", mu.squeeze(0).detach().cpu().numpy(), "std: ", std.squeeze(0).detach().cpu().numpy(), "pi_action_pre_tanh: ", pi_action_old.squeeze(0).detach().cpu().numpy(), "pi_action: ", pi_action.squeeze(0).detach().cpu().numpy())
 
         return pi_action, logp_pi
 
