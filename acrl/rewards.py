@@ -129,6 +129,7 @@ class RewardFunction:
         # Reward for completing a lap
         if telemetry_data["laps"] > self.previous_lap:
             reward += self.reward_laps_weight
+            terminated = True
             self.previous_lap = telemetry_data["laps"] 
             self.previous_checkpoint = 0.0
 
