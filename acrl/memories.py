@@ -147,7 +147,7 @@ class MemoryEnv(TorchMemory):
                  batch_size=None,
                  dataset_path="",
                  imgs_obs=4,
-                 act_buf_len=1, ########
+                 act_buf_len=2,
                  nb_steps=1,
                  sample_preprocessor: callable = None,
                  crc_debug=False,

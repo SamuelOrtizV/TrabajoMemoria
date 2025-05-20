@@ -265,7 +265,7 @@ class AC_Interface(RealTimeGymInterface):
         info = {}       
         rew = np.float32(rew)
 
-        if data["track_position"] > self.best and data["track_position"] < 0.98:
+        if data["track_position"] > self.best and data["track_position"] < 0.995:
             self.best = data["track_position"]
 
         return obs, rew, terminated, info

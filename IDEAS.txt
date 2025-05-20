@@ -19,11 +19,7 @@ recompensa por mejorar tiempo de vuelta
 
 explorar hiperparametros
 
-recompensas por controles dados, penalizar cambios bruscos
-
 Si se usan colores, ver tema de normalización -> No hacerlo pues no hay un dataset que normalizar ni se usara una cnn pre entrenada
-
-probar sin computo mixto
 
 Uso de curriculum learning para el entrenamiento:
     -Acelerar
@@ -35,14 +31,6 @@ Uso de curriculum learning para el entrenamiento:
     -Usar otras pistas
     -Mejorar los tiempos
     -Competir contra otros autos
-
-Probar que cnn estime distancia (creo que esto lo hace el critico) o que estime coordenadas
-
-
-
-Inicializar bias en log_std_layer (self.log_std_layer.bias.data.fill_(-1.0)) y tal vez mu_layer (para que acelere al inicio)
-
-Balancear escalas -> normalizar speed, rpm, gear
 
 Monitorear std, mu y logp_pi a lo largo del tiempo (sin clamp)
 
