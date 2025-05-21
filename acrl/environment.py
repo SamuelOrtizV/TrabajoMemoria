@@ -137,7 +137,7 @@ class AC_Interface(RealTimeGymInterface):
         """
         self.action = control
 
-        if self.speed > self.max_speed:
+        if self.speed > self.max_speed and self.max_speed > 0:
             control[0] = min(0, control[0])
 
         if self.gamepad:
