@@ -12,7 +12,6 @@ class RewardFunction:
                  reward_checkpoint=5,
                  reward_progress=0.1,
                  reward_laps_weight=500.0,
-                 start_up_multiplier=0.1,
                  penalty_no_progress=-0.2,
                  penalty_low_speed=-0.2,
                  penalty_backwards=-0.5,
@@ -68,7 +67,6 @@ class RewardFunction:
         self.reward_checkpoint = reward_checkpoint
         self.reward_progress = reward_progress
         self.reward_laps_weight = reward_laps_weight
-        self.start_up_multiplier = start_up_multiplier
         self.penalty_no_progress = penalty_no_progress
         self.penalty_low_speed = penalty_low_speed
         self.penalty_backwards = penalty_backwards

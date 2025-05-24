@@ -99,7 +99,6 @@ class AC_Interface(RealTimeGymInterface):
                                                 reward_checkpoint=cfg.REWARD_CONFIG['REWARD_CHECKPOINT'],
                                                 reward_progress=cfg.REWARD_CONFIG['REWARD_PROGRESS'],
                                                 reward_laps_weight=cfg.REWARD_CONFIG['LAPS_WEIGHT'],
-                                                start_up_multiplier=cfg.REWARD_CONFIG['START_UP_MULTIPLIER'],
                                                 penalty_no_progress=cfg.REWARD_CONFIG['PENALTY_NO_PROGRESS'],
                                                 penalty_low_speed=cfg.REWARD_CONFIG['PENALTY_LOW_SPEED'],
                                                 penalty_backwards=cfg.REWARD_CONFIG['PENALTY_BACKWARDS'],

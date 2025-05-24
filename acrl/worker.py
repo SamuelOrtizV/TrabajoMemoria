@@ -10,6 +10,8 @@ from tmrl.envs import GenericGymEnv
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
 
+STANDALONE = True
+
 # === Environment ======================================================================================================
 
 CONFIG_DICT["interface"] = AC_Interface
@@ -132,17 +134,21 @@ else:
 # Instantiation of the RolloutWorker object:
 
 if __name__ == "__main__":
-    my_worker = CustomRolloutWorker(
+    my_worker = RolloutWorker(
         env_cls=env_cls,
         actor_module_cls=actor_module_cls,
         sample_compressor=get_local_buffer_sample_imgs,  #cfg_obj.SAMPLE_COMPRESSOR, #
         device= "cuda" if cfg.CUDA_INFERENCE else "cpu",  # True if CUDA, False if CPU (rollout worker)
         max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE,
-        standalone=False, #FIXME No funciona bien
+        standalone=STANDALONE, #FIXME No funciona bien
         server_ip=cfg.SERVER_IP_FOR_WORKER,
         crc_debug=CRC_DEBUG)
 
     # Note: at this point, the RolloutWorker is not collecting samples yet.
     # Nevertheless, it connects to the Server.
 
-    my_worker.run(test_episode_interval=10, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
+    if STANDALONE:
+        # In standalone mode, the worker will not connect to a server.
+        my_worker.run_episodes(max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE)
+    else:
+        my_worker.run(test_episode_interval=10, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
