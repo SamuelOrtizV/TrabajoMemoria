@@ -10,7 +10,7 @@ from tmrl.envs import GenericGymEnv
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
 
-STANDALONE = True
+STANDALONE = False
 
 # === Environment ======================================================================================================
 

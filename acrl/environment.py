@@ -25,7 +25,7 @@ class AC_Interface(RealTimeGymInterface):
     This is the API needed for the algorithm to control Assetto Corsa.
     """
     def __init__(self,
-                 img_hist_len: int = 4,
+                 img_hist_len: int = cfg.IMG_HIST_LEN,
                  gamepad: bool = True,
                  save_replays: bool = False, #POR IMPLEMENTAR
                  grayscale: bool = cfg.GRAYSCALE,
