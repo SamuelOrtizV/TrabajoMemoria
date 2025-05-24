@@ -35,3 +35,11 @@ Uso de curriculum learning para el entrenamiento:
 Monitorear std, mu y logp_pi a lo largo del tiempo (sin clamp)
 
 
+easy
+highlands
+silver stone 1967
+Monza 1966 - road course
+
+medium
+black car county - short
+silverstone - national

@@ -121,7 +121,7 @@ class RewardFunction:
         self.position_buffer.append(track_position)  # we add the current position to the buffer
         progress = self.position_buffer[-1] - self.position_buffer[0]
         if self.previous_checkpoint is None:
-            self.previous_checkpoint = track_position
+            self.previous_checkpoint = track_position if track_position < 0.95 else 0.0 # Some tracks start before pos 0.0
         checkpoint_difference = track_position - self.previous_checkpoint
 
         # ----------------------REWARDS---------------------------
@@ -134,7 +134,7 @@ class RewardFunction:
             self.previous_checkpoint = 0.0
 
         # Reward for reaching a checkpoint
-        if checkpoint_difference > self.threshold_checkpoint:
+        if checkpoint_difference > self.threshold_checkpoint and checkpoint_difference < 0.5:
             reward += self.reward_checkpoint
             print(f"Checkpoint reached: {track_position}                                                                                                                                                              ")
             self.previous_checkpoint = track_position
