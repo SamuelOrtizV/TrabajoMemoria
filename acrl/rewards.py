@@ -139,7 +139,7 @@ class RewardFunction:
 
         # Reward for progress on the track
         if progress > 0.0:  # If we did progress on the track
-            reward += self.reward_progress * min((telemetry_data["speed"])/self.threshold_speed, 1) #Full reward only if above speed threshold
+            reward += self.reward_progress * min((telemetry_data["speed"])/(self.threshold_speed*3), 1) #Full reward only if above speed threshold
 
         """ # Reward for speed
         if telemetry_data["speed"] > self.threshold_speed:
