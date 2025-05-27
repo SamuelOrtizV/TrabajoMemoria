@@ -10,7 +10,7 @@ from custom_algorithms import SAC_Agent
 
 from environment import AC_Interface
 from memories import MemoryFull
-from custom_models import VanillaCNNActorCritic, EffNetActorCritic
+from custom_models import ChannelStackedCNNActorCritic
 
 from tmrl.custom.custom_algorithms import REDQSACAgent
 
@@ -67,7 +67,7 @@ memory_cls = partial(MemoryFull,
 
 # Model:
 
-model_cls = VanillaCNNActorCritic
+model_cls = ChannelStackedCNNActorCritic
 
 # Training agent:
 

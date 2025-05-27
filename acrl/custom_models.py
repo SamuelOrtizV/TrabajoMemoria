@@ -701,9 +701,9 @@ class VanillaCNN(Module):
         x = self.mlp(x)
         return x
 
-class CustomCNN(Module):
+class ChannelStackedCNN(Module):
     def __init__(self, q_net, action_space_size):
-        super(CustomCNN, self).__init__()
+        super(ChannelStackedCNN, self).__init__()
         self.q_net = q_net
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
         self.hist_len = cfg.IMG_HIST_LEN
@@ -769,14 +769,14 @@ class CustomCNN(Module):
         x = self.mlp(x)
         return x
 
-class SquashedGaussianVanillaCNNActor(TorchActorModule):
+class ChannelStackedCNNActor(TorchActorModule):
     def __init__(self, observation_space, action_space):
         super().__init__(observation_space, action_space)
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
 
-        self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
-        #self.net = CustomCNN(q_net=False, action_space_size=dim_act)
+        #self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
+        self.net = ChannelStackedCNN(q_net=False, action_space_size=dim_act)
         
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
@@ -798,8 +798,8 @@ class SquashedGaussianVanillaCNNActor(TorchActorModule):
         nn.init.constant_(self.log_std_layer.bias, -0.5) """
 
         # Debug TODO: borrar 
-        print("mu_layer.bias:", self.mu_layer.bias.data)
-        print("log_std_layer.bias:", self.log_std_layer.bias.data)
+        """ print("mu_layer.bias:", self.mu_layer.bias.data)
+        print("log_std_layer.bias:", self.log_std_layer.bias.data) """
 
     def forward(self, obs, test=False, with_logprob=True):
         
@@ -914,13 +914,13 @@ class HumanActor(TorchActorModule):
         return np.clip(action, self.action_space.low, self.action_space.high)
 
 
-class VanillaCNNQFunction(nn.Module):
+class ChannelStackedCNNQFunction(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
         
         action_space_size = action_space.shape[0]
-        self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
-        #self.net = CustomCNN(q_net=True, action_space_size=action_space_size)
+        #self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
+        self.net = ChannelStackedCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
 
@@ -956,14 +956,14 @@ class VanillaCNNQFunction(nn.Module):
         return torch.squeeze(q, -1)  # Critical to ensure q has right shape.
 
 
-class VanillaCNNActorCritic(nn.Module):
+class ChannelStackedCNNActorCritic(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
 
         # build policy and value functions
-        self.actor = SquashedGaussianVanillaCNNActor(observation_space, action_space)
-        self.q1 = VanillaCNNQFunction(observation_space, action_space)
-        self.q2 = VanillaCNNQFunction(observation_space, action_space)
+        self.actor = ChannelStackedCNNActor(observation_space, action_space)
+        self.q1 = ChannelStackedCNNQFunction(observation_space, action_space)
+        self.q2 = ChannelStackedCNNQFunction(observation_space, action_space)
 
     def act(self, obs, test=False):
         with torch.no_grad():
