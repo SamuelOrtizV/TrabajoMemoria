@@ -602,6 +602,43 @@ class EffNetActorCritic(nn.Module):
             a, _ = self.actor(obs, test, False)
             return a.squeeze().cpu().numpy()
 
+# Human Actor: =========================================================================================================
+
+class HumanActor(TorchActorModule):
+    def __init__(self, observation_space, action_space):
+        super().__init__(observation_space, action_space)
+        self.action_space = action_space
+        self.controller = XboxControllerReader(total_wait_secs=7)  # Instancia para leer el controlador Xbox
+
+    def forward(self, obs, test=False, with_logprob=True):
+        """
+        Este método no se utiliza en el modo humano, ya que las acciones provienen del controlador.
+        """
+        raise NotImplementedError("El método 'forward' no es necesario para el HumanActor con entradas humanas.")
+
+    def act(self, obs, test=False):
+        """
+        Captura las acciones del controlador Xbox y las ajusta al espacio de acciones.
+        """
+        # Leer las entradas del controlador
+        controller_inputs = self.controller.read()
+
+        # Asegurarse de que la acción esté dentro de los límites del espacio de acciones
+        action = self._clip_action(controller_inputs)
+
+        return action
+
+    def _clip_action(self, action):
+        """
+        Asegura que la acción esté dentro de los límites del espacio de acciones.
+
+        Args:
+            action (np.array): Acción generada.
+
+        Returns:
+            np.array: Acción ajustada dentro de los límites.
+        """
+        return np.clip(action, self.action_space.low, self.action_space.high)
 
 # Vanilla CNN: ====================================================================================
 
@@ -701,9 +738,9 @@ class VanillaCNN(Module):
         x = self.mlp(x)
         return x
 
-class ChannelStackedCNN(Module):
+class StakedChannelCNN(Module):
     def __init__(self, q_net, action_space_size):
-        super(ChannelStackedCNN, self).__init__()
+        super(StakedChannelCNN, self).__init__()
         self.q_net = q_net
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
         self.hist_len = cfg.IMG_HIST_LEN
@@ -769,14 +806,14 @@ class ChannelStackedCNN(Module):
         x = self.mlp(x)
         return x
 
-class ChannelStackedCNNActor(TorchActorModule):
+class StakedChannelCNNActor(TorchActorModule):
     def __init__(self, observation_space, action_space):
         super().__init__(observation_space, action_space)
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
 
         #self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
-        self.net = ChannelStackedCNN(q_net=False, action_space_size=dim_act)
+        self.net = StakedChannelCNN(q_net=False, action_space_size=dim_act)
         
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
@@ -876,51 +913,15 @@ class ChannelStackedCNNActor(TorchActorModule):
         with torch.no_grad():
             a, _ = self.forward(obs, test, False)
             return a.squeeze().cpu().numpy()
-        
-class HumanActor(TorchActorModule):
-    def __init__(self, observation_space, action_space):
-        super().__init__(observation_space, action_space)
-        self.action_space = action_space
-        self.controller = XboxControllerReader(total_wait_secs=7)  # Instancia para leer el controlador Xbox
-
-    def forward(self, obs, test=False, with_logprob=True):
-        """
-        Este método no se utiliza en el modo humano, ya que las acciones provienen del controlador.
-        """
-        raise NotImplementedError("El método 'forward' no es necesario para el HumanActor con entradas humanas.")
-
-    def act(self, obs, test=False):
-        """
-        Captura las acciones del controlador Xbox y las ajusta al espacio de acciones.
-        """
-        # Leer las entradas del controlador
-        controller_inputs = self.controller.read()
-
-        # Asegurarse de que la acción esté dentro de los límites del espacio de acciones
-        action = self._clip_action(controller_inputs)
-
-        return action
-
-    def _clip_action(self, action):
-        """
-        Asegura que la acción esté dentro de los límites del espacio de acciones.
-
-        Args:
-            action (np.array): Acción generada.
-
-        Returns:
-            np.array: Acción ajustada dentro de los límites.
-        """
-        return np.clip(action, self.action_space.low, self.action_space.high)
 
 
-class ChannelStackedCNNQFunction(nn.Module):
+class StakedChannelCNNQFunction(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
         
         action_space_size = action_space.shape[0]
         #self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
-        self.net = ChannelStackedCNN(q_net=True, action_space_size=action_space_size)
+        self.net = StakedChannelCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
 
@@ -956,14 +957,14 @@ class ChannelStackedCNNQFunction(nn.Module):
         return torch.squeeze(q, -1)  # Critical to ensure q has right shape.
 
 
-class ChannelStackedCNNActorCritic(nn.Module):
+class StakedChannelCNNActorCritic(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
 
         # build policy and value functions
-        self.actor = ChannelStackedCNNActor(observation_space, action_space)
-        self.q1 = ChannelStackedCNNQFunction(observation_space, action_space)
-        self.q2 = ChannelStackedCNNQFunction(observation_space, action_space)
+        self.actor = StakedChannelCNNActor(observation_space, action_space)
+        self.q1 = StakedChannelCNNQFunction(observation_space, action_space)
+        self.q2 = StakedChannelCNNQFunction(observation_space, action_space)
 
     def act(self, obs, test=False):
         with torch.no_grad():

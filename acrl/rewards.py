@@ -163,11 +163,7 @@ class RewardFunction:
             if self.mistake_out_of_track:
                 mistake = True 
 
-        """ # Penalty and reward for acceleration when starting from 0
-        if telemetry_data["gear"] == 1:
-            reward += action[0] * self.start_up_multiplier """
-
-        # Penalty for low speed - Penalty and reward when starting from 0
+        # Penalty for low speed
         if telemetry_data["speed"] < self.threshold_speed:
             # Penalization decreases linearly from 0 to penalty_low_speed as speed decreases from threshold_speed to 0
             reward += self.penalty_low_speed*(self.threshold_speed - telemetry_data["speed"])/self.threshold_speed
