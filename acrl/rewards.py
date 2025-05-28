@@ -209,8 +209,7 @@ class RewardFunction:
         if max(telemetry_data["car_damage"]) > self.threshold_damage:
             terminated = True  # The episode ends if the car is damaged beyond the threshold
 
-        max_reward = max(1, abs(reward))
-        reward = reward / max_reward
+        reward = np.clip(reward, -1.0, 1.0)  # Clip the reward to [-1, 1]
 
         # Reward for completing a lap
         if telemetry_data["laps"] > self.previous_lap:

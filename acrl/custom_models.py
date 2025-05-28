@@ -677,66 +677,47 @@ class VanillaCNN(Module):
         self.h_out, self.w_out = conv2d_out_dims(self.conv4, self.h_out, self.w_out)
         self.out_channels = self.conv4.out_channels
         self.flat_features = self.out_channels * self.h_out * self.w_out
-        #self.mlp_input_features = self.flat_features + 9 if self.q_net else self.flat_features + 6
+
         self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
 
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
 
+    def stack_hist_images(self, images):
+        # images: (batch, hist_len, H, W, C)
+        batch_size, hist_len, height, width, channels = images.shape
+        images = images.permute(0, 1, 4, 2, 3)  # (batch, hist_len, C, H, W)
+        images = images.reshape(batch_size, hist_len * channels, height, width)  # (batch, hist_len*C, H, W)
+        return images   
+
     def forward(self, x):
 
-        if self.act_buf_len == 1:
-            if self.q_net:
-                speed, gear, rpm, images, prev_act, act = x
-            else:    
-                speed, gear, rpm, images, prev_act = x        
+        #view_input_tensor(x)
 
-            # Normalizar imágenes
-            images = images.float() / 255.0
+        speed, gear, rpm, images, *acts = x
+        # Normalizar imágenes
+        images = images.float() / 255.0
 
-            x = F.relu(self.conv1(images))
-            x = F.relu(self.conv2(x))
-            x = F.relu(self.conv3(x))
-            x = F.relu(self.conv4(x))
+        x = F.relu(self.conv1(images))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
 
-            flat_features = num_flat_features(x)
-            assert flat_features == self.flat_features, f"x.shape:{x.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
-            x = x.view(-1, flat_features)
+        flat_features = num_flat_features(x_conv)
+        assert flat_features == self.flat_features, f"x.shape:{x_conv.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
+        x_conv = x_conv.view(-1, flat_features)
 
-            # Concatenar características adicionales
-            if self.q_net:
-                x = torch.cat((speed, gear, rpm, x, prev_act, act), -1)
-            else:
-                x = torch.cat((speed, gear, rpm, x, prev_act), -1)
-        
-        elif self.act_buf_len == 2:
-            if self.q_net:
-                speed, gear, rpm, images, prev_act1, prev_act2, act = x
-            else:    
-                speed, gear, rpm, images, prev_act1, prev_act2 = x
-            # Normalizar imágenes
-            images = images.float() / 255.0
-
-            x = F.relu(self.conv1(images))
-            x = F.relu(self.conv2(x))
-            x = F.relu(self.conv3(x))
-            x = F.relu(self.conv4(x))
-
-            flat_features = num_flat_features(x)
-            assert flat_features == self.flat_features, f"x.shape:{x.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
-            x = x.view(-1, flat_features)
-
-
-            # Concatenar características adicionales
-            if self.q_net:
-                x = torch.cat((speed, gear, rpm, x, prev_act1, prev_act2, act), -1)
-            else:
-                x = torch.cat((speed, gear, rpm, x, prev_act1, prev_act2), -1)
+        # Concatenar características adicionales
+        if self.q_net:
+            prev_acts = acts[:-1]
+            act = acts[-1]
+            x_cat = torch.cat((speed, gear, rpm, x_conv, *prev_acts, act), -1)
         else:
-            raise ValueError(f"Unsupported act_buf_len: {self.act_buf_len}. Try 1 or 2. If you want to use more, you need to modify the code.")
+            prev_acts = acts
+            x_cat = torch.cat((speed, gear, rpm, x_conv, *prev_acts), -1)
 
-        x = self.mlp(x)
-        return x
+        x_cat = self.mlp(x_cat)
+        return x_cat
 
 class StakedChannelCNN(Module):
     def __init__(self, q_net, action_space_size):
@@ -760,48 +741,31 @@ class StakedChannelCNN(Module):
         self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
-        
+
+    def stack_hist_images(self, images):
+        # images: (batch, hist_len, H, W, C)
+        batch_size, hist_len, height, width, channels = images.shape
+        images = images.permute(0, 1, 4, 2, 3)  # (batch, hist_len, C, H, W)
+        images = images.reshape(batch_size, hist_len * channels, height, width)  # (batch, hist_len*C, H, W)
+        return images    
 
     def forward(self, x):
 
         #view_input_tensor(x)
 
-        if self.act_buf_len == 1:
-            if self.q_net:
-                speed, gear, rpm, images, prev_act, act = x
-            else:    
-                speed, gear, rpm, images, prev_act = x        
+        speed, gear, rpm, images, *acts = x
+        images = images.float() / 255.0
+        images = self.stack_hist_images(images)
+        cnn_out = self.cnn(images)
 
-            # Normalizar imágenes
-            images = images.float() / 255.0
-
-            # Extraer características con EfficientNet
-            cnn_out = self.cnn(images)
-
-            # Concatenar características adicionales
-            if self.q_net:
-                x = torch.cat((speed, gear, rpm, cnn_out, prev_act, act), -1)
-            else:
-                x = torch.cat((speed, gear, rpm, cnn_out, prev_act), -1)
-        elif self.act_buf_len == 2:
-            if self.q_net:
-                speed, gear, rpm, images, prev_act1, prev_act2, act = x
-            else:    
-                speed, gear, rpm, images, prev_act1, prev_act2 = x
-
-            # Normalizar imágenes
-            images = images.float() / 255.0
-
-            # Extraer características con EfficientNet
-            cnn_out = self.cnn(images)
-
-            # Concatenar características adicionales
-            if self.q_net:
-                x = torch.cat((speed, gear, rpm, cnn_out, prev_act1, prev_act2, act), -1)
-            else:
-                x = torch.cat((speed, gear, rpm, cnn_out, prev_act1, prev_act2), -1)
+        if self.q_net:
+            prev_acts = acts[:-1]
+            act = acts[-1]
+            x = torch.cat((speed, gear, rpm, cnn_out, *prev_acts, act), -1)
         else:
-            raise ValueError(f"Unsupported act_buf_len: {self.act_buf_len}. Try 1 or 2. If you want to use more, you need to modify the code.")
+            prev_acts = acts
+            x = torch.cat((speed, gear, rpm, cnn_out, *prev_acts), -1) 
+
         # Pasar por el MLP
         x = self.mlp(x)
         return x
@@ -812,8 +776,8 @@ class StakedChannelCNNActor(TorchActorModule):
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
 
-        #self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
-        self.net = StakedChannelCNN(q_net=False, action_space_size=dim_act)
+        self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
+        #self.net = StakedChannelCNN(q_net=False, action_space_size=dim_act)
         
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
@@ -840,24 +804,7 @@ class StakedChannelCNNActor(TorchActorModule):
 
     def forward(self, obs, test=False, with_logprob=True):
         
-        if self.grayscale:
-            net_out = self.net(obs)            
-        else:
-            if self.act_buf_len == 1:
-                speed, gear, rpm, images, prev_act = obs
-                batch_size, hist_len, height, width, channels = images.shape
-                images = images.permute(0, 1, 4, 2, 3)  # Cambia a (batch_size, hist_len, channels, height, width)
-                images = images.reshape(batch_size, hist_len * channels, height, width)  # Combina historial y canales
-                net_out = self.net((speed, gear, rpm, images, prev_act))
-            elif self.act_buf_len == 2:
-                speed, gear, rpm, images, prev_act1, prev_act2 = obs
-                batch_size, hist_len, height, width, channels = images.shape
-                images = images.permute(0, 1, 4, 2, 3)
-                images = images.reshape(batch_size, hist_len * channels, height, width)
-                net_out = self.net((speed, gear, rpm, images, prev_act1, prev_act2))
-            else:
-                raise ValueError(f"Unsupported act_buf_len: {self.act_buf_len}. Try 1 or 2. If you want to use more, you need to modify the code.")
-            
+        net_out = self.net(obs)           
         
         mu = self.mu_layer(net_out)
         log_std = self.log_std_layer(net_out)
@@ -898,7 +845,6 @@ class StakedChannelCNNActor(TorchActorModule):
             logp_pi = None
 
         #pi_action_old = pi_action
-
         
         pi_action = torch.tanh(pi_action)
         pi_action = self.act_limit * pi_action
@@ -920,39 +866,13 @@ class StakedChannelCNNQFunction(nn.Module):
         super().__init__()
         
         action_space_size = action_space.shape[0]
-        #self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
-        self.net = StakedChannelCNN(q_net=True, action_space_size=action_space_size)
+        self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
+        #self.net = StakedChannelCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
 
     def forward(self, obs, act):
-
-        if self.grayscale:
-            x = (*obs, act)
-        else:
-            if self.act_buf_len == 1:                
-                speed, gear, rpm, images, prev_act = obs
-                batch_size, hist_len, height, width, channels = images.shape
-
-                # Reorganiza las dimensiones: combina historial y canales
-                images = images.permute(0, 1, 4, 2, 3)  # Cambia a (batch_size, hist_len, channels, height, width)
-                images = images.reshape(batch_size, hist_len * channels, height, width)  # Combina historial y canales
-
-                # Pasa las imágenes reorganizadas a la red convolucional
-                x = (speed, gear, rpm, images, prev_act, act)
-            elif self.act_buf_len == 2:
-                speed, gear, rpm, images, prev_act1, prev_act2 = obs
-                batch_size, hist_len, height, width, channels = images.shape
-
-                # Reorganiza las dimensiones: combina historial y canales
-                images = images.permute(0, 1, 4, 2, 3)
-                images = images.reshape(batch_size, hist_len * channels, height, width)
-                # Pasa las imágenes reorganizadas a la red convolucional
-                x = (speed, gear, rpm, images, prev_act1, prev_act2, act)
-            else:
-                raise ValueError(f"Unsupported act_buf_len: {self.act_buf_len}. Try 1 or 2. If you want to use more, you need to modify the code.")
-
-        
+        x = (*obs, act)        
         q = self.net(x)
         return torch.squeeze(q, -1)  # Critical to ensure q has right shape.
 
