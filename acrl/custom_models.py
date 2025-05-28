@@ -700,9 +700,9 @@ class VanillaCNN(Module):
         images = self.stack_hist_images(images)
 
         x_conv = F.relu(self.conv1(images))
-        x_conv = F.relu(self.conv2(x))
-        x_conv = F.relu(self.conv3(x))
-        x_conv = F.relu(self.conv4(x))
+        x_conv = F.relu(self.conv2(x_conv))
+        x_conv = F.relu(self.conv3(x_conv))
+        x_conv = F.relu(self.conv4(x_conv))
 
         flat_features = num_flat_features(x_conv)
         assert flat_features == self.flat_features, f"x.shape:{x_conv.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
