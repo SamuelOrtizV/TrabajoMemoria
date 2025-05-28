@@ -697,6 +697,7 @@ class VanillaCNN(Module):
         speed, gear, rpm, images, *acts = x
         # Normalizar imágenes
         images = images.float() / 255.0
+        images = self.stack_hist_images(images)
 
         x = F.relu(self.conv1(images))
         x = F.relu(self.conv2(x))
