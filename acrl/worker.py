@@ -2,7 +2,7 @@ import tmrl.config.config_constants as cfg
 from tmrl.config.config_objects import CONFIG_DICT
 from tmrl.networking import RolloutWorker, print_with_timestamp
 from tmrl.util import partial
-from custom_models import StakedChannelCNNActor, HumanActor
+from custom_models import StackedChannelCNNActor, HumanActor, CNNRNNActor
 from environment import AC_Interface
 from memories import get_local_buffer_sample_imgs
 from tmrl.envs import GenericGymEnv
@@ -129,7 +129,7 @@ class CustomRolloutWorker(RolloutWorker):
 if cfg.TMRL_CONFIG["HUMAN_WORKER"]:
     actor_module_cls = HumanActor
 else:
-    actor_module_cls = StakedChannelCNNActor
+    actor_module_cls = CNNRNNActor #StackedChannelCNNActor
 
 # Instantiation of the RolloutWorker object:
 

@@ -720,9 +720,9 @@ class VanillaCNN(Module):
         x_cat = self.mlp(x_cat)
         return x_cat
 
-class StakedChannelCNN(Module):
+class StackedChannelCNN(Module):
     def __init__(self, q_net, action_space_size):
-        super(StakedChannelCNN, self).__init__()
+        super(StackedChannelCNN, self).__init__()
         self.q_net = q_net
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
         self.hist_len = cfg.IMG_HIST_LEN
@@ -771,14 +771,14 @@ class StakedChannelCNN(Module):
         x = self.mlp(x)
         return x
 
-class StakedChannelCNNActor(TorchActorModule):
+class StackedChannelCNNActor(TorchActorModule):
     def __init__(self, observation_space, action_space):
         super().__init__(observation_space, action_space)
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
 
         self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
-        #self.net = StakedChannelCNN(q_net=False, action_space_size=dim_act)
+        #self.net = StackedChannelCNN(q_net=False, action_space_size=dim_act)
         
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
@@ -862,13 +862,13 @@ class StakedChannelCNNActor(TorchActorModule):
             return a.squeeze().cpu().numpy()
 
 
-class StakedChannelCNNQFunction(nn.Module):
+class StackedChannelCNNQFunction(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
         
         action_space_size = action_space.shape[0]
         self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
-        #self.net = StakedChannelCNN(q_net=True, action_space_size=action_space_size)
+        #self.net = StackedChannelCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
 
@@ -878,25 +878,301 @@ class StakedChannelCNNQFunction(nn.Module):
         return torch.squeeze(q, -1)  # Critical to ensure q has right shape.
 
 
-class StakedChannelCNNActorCritic(nn.Module):
+class StackedChannelCNNActorCritic(nn.Module):
     def __init__(self, observation_space, action_space):
         super().__init__()
 
         # build policy and value functions
-        self.actor = StakedChannelCNNActor(observation_space, action_space)
-        self.q1 = StakedChannelCNNQFunction(observation_space, action_space)
-        self.q2 = StakedChannelCNNQFunction(observation_space, action_space)
+        self.actor = StackedChannelCNNActor(observation_space, action_space)
+        self.q1 = StackedChannelCNNQFunction(observation_space, action_space)
+        self.q2 = StackedChannelCNNQFunction(observation_space, action_space)
 
     def act(self, obs, test=False):
         with torch.no_grad():
             a, _ = self.actor(obs, test, False)
             return a.squeeze().cpu().numpy()
 
+# RNN: ==========================================================================================================
+
+from importlib import import_module
+
+class PreTrainedCNN(Module):
+    def __init__(self):
+        super(PreTrainedCNN, self).__init__()
+        self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
+        self.num_channels = 1 if cfg.GRAYSCALE else 3
+
+        # Lee el nombre/clase de la CNN desde cfg
+        cnn_name = cfg.TMRL_CONFIG["CNN_CLASS"]
+        pretrained = cfg.TMRL_CONFIG["CNN_PRETRAINED"]
+
+        # Importa la clase CNN
+        try:
+            module = import_module("torchvision.models")
+            imagenet_cnn_cls = getattr(module, cnn_name)
+        except Exception as e:
+            raise ImportError(f"No se pudo importar la clase CNN '{cnn_name}': {e}, intenta usar un modelo de torchvision.models como 'resnet18', 'vgg16', etc.")
+        
+        # Si se piden pesos preentrenados, solo se permite para imágenes RGB
+        if pretrained:
+            assert self.num_channels == 3, "Los pesos preentrenados solo están disponibles para imágenes RGB (3 canales)."
+
+        # Instancia la CNN
+        self.cnn = imagenet_cnn_cls(weights="DEFAULT" if pretrained else None)
+
+        # Modifica la primera capa para aceptar self.num_channels
+        first_conv = None
+        for name, module in self.cnn.named_modules():
+            if isinstance(module, nn.Conv2d):
+                first_conv = module
+                break
+        assert first_conv is not None, "No se encontró una capa Conv2d en la CNN seleccionada."
+
+        if first_conv.in_channels != self.num_channels:
+            # Crea una nueva capa con los canales correctos (sin copiar pesos)
+            new_conv = nn.Conv2d(
+                in_channels=self.num_channels,
+                out_channels=first_conv.out_channels,
+                kernel_size=first_conv.kernel_size,
+                stride=first_conv.stride,
+                padding=first_conv.padding,
+                bias=first_conv.bias is not None
+            )
+            # Reemplaza la capa en el modelo
+            for name, module in self.cnn.named_children():
+                if isinstance(module, nn.Conv2d):
+                    setattr(self.cnn, name, new_conv)
+                    break
+
+        # Quita la última capa (classifier/fc) para obtener solo features
+        if hasattr(self.cnn, 'classifier'):
+            self.cnn_features = nn.Sequential(*(list(self.cnn.children())[:-1]))
+        elif hasattr(self.cnn, 'fc'):
+            self.cnn_features = nn.Sequential(*(list(self.cnn.children())[:-1]))
+        else:
+            raise ValueError("No se reconoce la arquitectura de la CNN pasada.")
+
+    def forward(self, images):
+        images = images.float() / 255.0  # Espera (batch, C, H, W)
+        cnn_out = self.cnn_features(images)
+        # Si la CNN devuelve (batch, features, 1, 1), aplana
+        if cnn_out.ndim == 4:
+            cnn_out = cnn_out.view(cnn_out.size(0), -1)
+        elif cnn_out.ndim == 2:
+            pass  # ya está plano
+        else:
+            raise RuntimeError("La salida de la CNN no tiene la forma esperada.")
+        return cnn_out
+
+class CNNRNNEncoder(nn.Module):
+    def __init__(self, cnn: nn.Module, rnn_hidden_size=128, rnn_layers=1, rnn_type='gru'):
+        """
+        cnn: instancia de PreTrainedCNN (o cualquier extractor CNN que devuelva (batch, features))
+        rnn_hidden_size: tamaño del estado oculto de la RNN
+        rnn_layers: cantidad de capas de la RNN
+        rnn_type: 'gru' o 'lstm'
+        """
+        super().__init__()
+        self.cnn = cnn
+        self.rnn_hidden_size = rnn_hidden_size
+        self.rnn_layers = rnn_layers
+
+        # Determina el tamaño de salida de la CNN de forma dinámica
+        with torch.no_grad():
+            dummy = torch.zeros(1, cnn.num_channels, cnn.h_out, cnn.w_out)
+            cnn_out_dim = cnn(dummy).shape[1]
+
+        if rnn_type == 'RNN':
+            self.rnn = nn.RNN(input_size=cnn_out_dim, hidden_size=rnn_hidden_size, num_layers=rnn_layers, batch_first=True)
+        elif rnn_type == 'GRU':
+            self.rnn = nn.GRU(input_size=cnn_out_dim, hidden_size=rnn_hidden_size, num_layers=rnn_layers, batch_first=True)
+        elif rnn_type == 'LSMT':
+            self.rnn = nn.LSTM(input_size=cnn_out_dim, hidden_size=rnn_hidden_size, num_layers=rnn_layers, batch_first=True)
+        else:
+            raise ValueError("rnn_type debe ser 'gru' o 'lstm'")
+
+    def forward(self, images_seq):
+        """
+        images_seq: (batch, seq_len, H, W, C)
+        """
+        batch, seq_len, H, W, C = images_seq.shape
+        # Reordena a (batch, seq_len, C, H, W)
+        images_seq = images_seq.permute(0, 1, 4, 2, 3).contiguous()
+        # Procesa cada imagen de la secuencia por la CNN
+        images_seq = images_seq.view(batch * seq_len, C, H, W)
+        cnn_features = self.cnn(images_seq)  # (batch*seq_len, cnn_feat)
+        cnn_features = cnn_features.view(batch, seq_len, -1)  # (batch, seq_len, cnn_feat)
+        # Pasa la secuencia por la RNN
+        rnn_out, _ = self.rnn(cnn_features)  # (batch, seq_len, rnn_hidden_size)
+        # Devuelve el último hidden state de la secuencia
+        return rnn_out[:, -1, :]  # (batch, rnn_hidden_size)
+        
+class MLPHead(nn.Module):
+    def __init__(self, rnn_hidden_size, telemetry_dim, act_buf_dim, action_dim, q_net=False, mlp_layers=(256, 256)):
+        """
+        rnn_hidden_size: tamaño de la salida de la RNN
+        telemetry_dim: dimensión de los datos de telemetría (ej: velocidad, rpm, gear, etc.)
+        act_buf_dim: dimensión total de las acciones pasadas (ej: action_dim * act_buf_len)
+        action_dim: dimensión de la acción actual
+        q_net: True si es Q (crítico), False si es actor
+        mlp_layers: capas ocultas del MLP
+        """
+        super().__init__()
+        self.q_net = q_net
+        self.telemetry_dim = telemetry_dim
+        if q_net:
+            mlp_input_dim = rnn_hidden_size + telemetry_dim + act_buf_dim + action_dim
+            mlp_sizes = [mlp_input_dim] + list(mlp_layers) + [1]
+        else:
+            mlp_input_dim = rnn_hidden_size + telemetry_dim + act_buf_dim
+            mlp_sizes = [mlp_input_dim] + list(mlp_layers)
+        self.mlp = mlp(mlp_sizes, nn.ReLU)
+    
+    def forward(self, telemetry, rnn_out, acts):
+
+        telemetry = torch.cat(telemetry, dim=-1)
+        if self.q_net:
+            prev_acts = acts[:-1]
+            act = acts[-1]
+            x_cat = torch.cat((telemetry, rnn_out, *prev_acts, act), -1)
+        else:
+            prev_acts = acts
+            x_cat = torch.cat((telemetry, rnn_out, *prev_acts), -1)
+
+        x_cat = self.mlp(x_cat)
+        return x_cat
+
+class CNNRNNActor(TorchActorModule):
+    def __init__(self, observation_space, action_space):
+        super().__init__(observation_space, action_space)
+        dim_act = action_space.shape[0]
+        act_limit = action_space.high[0]
+
+        # Configuración desde cfg
+        rnn_hidden_size = cfg.TMRL_CONFIG["RNN_HIDDEN_SIZE"]
+        rnn_layers = cfg.TMRL_CONFIG["RNN_LAYERS"]
+        rnn_type = cfg.TMRL_CONFIG["RNN_TYPE"]
+        telemetry_dim = sum(int(np.prod(space.shape)) for space in observation_space[:3])
+        act_buf_dim = act_buf_dim = action_space.shape[0] * cfg.ACT_BUF_LEN
+        mlp_layers = cfg.TMRL_CONFIG["MLP_LAYERS"] if hasattr(cfg, "MLP_LAYERS") else (256, 256)
+
+        self.cnn_encoder = CNNRNNEncoder(
+            cnn=PreTrainedCNN(),
+            rnn_hidden_size=rnn_hidden_size,
+            rnn_layers=rnn_layers,
+            rnn_type=rnn_type
+        )
+        self.head = MLPHead(
+            rnn_hidden_size=rnn_hidden_size,
+            telemetry_dim=telemetry_dim,
+            act_buf_dim=act_buf_dim,
+            action_dim=0,
+            q_net=False,
+            mlp_layers=mlp_layers
+        )
+        self.mu_layer = nn.Linear(mlp_layers[-1], dim_act)
+        self.log_std_layer = nn.Linear(mlp_layers[-1], dim_act)
+        self.act_limit = act_limit
+
+        # Inicialización de pesos de salida
+        with torch.no_grad():
+            nn.init.zeros_(self.mu_layer.weight)
+            self.mu_layer.bias.fill_(0.0)
+            nn.init.zeros_(self.log_std_layer.weight)
+            self.log_std_layer.bias.fill_(-0.5)
+
+    def forward(self, obs, test=False, with_logprob=True):
+
+        # obs: (speed, gear, rpm, ..., telemetry_n, images_seq, *acts)
+        telemetry_dim = self.head.telemetry_dim
+        telemetry = [obs[i] for i in range(telemetry_dim)]
+        images_seq = obs[telemetry_dim]
+        acts = obs[telemetry_dim + 1:]
+
+        rnn_out = self.cnn_encoder(images_seq)
+        mlp_out = self.head(telemetry, rnn_out, acts)
+        mu = self.mu_layer(mlp_out)
+        log_std = self.log_std_layer(mlp_out)
+        log_std = torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX)
+        std = torch.exp(log_std)
+
+        pi_distribution = Normal(mu, std)
+        pi_action = mu if test else pi_distribution.rsample()
+
+        if with_logprob:
+            logp_pi = pi_distribution.log_prob(pi_action).sum(axis=-1)
+            logp_pi -= (2 * (np.log(2) - pi_action - F.softplus(-2 * pi_action))).sum(axis=1)
+        else:
+            logp_pi = None
+
+        pi_action = torch.tanh(pi_action)
+        pi_action = self.act_limit * pi_action
+        return pi_action, logp_pi
+
+    def act(self, obs, test=False):
+        with torch.no_grad():
+            a, _ = self.forward(obs, test, False)
+            return a.squeeze().cpu().numpy()
+
+
+class CNNRNNQFunction(nn.Module):
+    def __init__(self, observation_space, action_space):
+        super().__init__()
+        action_dim = action_space.shape[0]
+
+        # Configuración desde cfg
+        rnn_hidden_size = cfg.TMRL_CONFIG["RNN_HIDDEN_SIZE"]
+        rnn_layers = cfg.TMRL_CONFIG["RNN_LAYERS"]
+        rnn_type = cfg.TMRL_CONFIG["RNN_TYPE"]
+        telemetry_dim = sum(int(np.prod(space.shape)) for space in observation_space[:3])
+        act_buf_dim = act_buf_dim = action_space.shape[0] * cfg.ACT_BUF_LEN
+        mlp_layers = cfg.TMRL_CONFIG["MLP_LAYERS"] if hasattr(cfg, "MLP_LAYERS") else (256, 256)
+
+        self.cnn_encoder = CNNRNNEncoder(
+            cnn=PreTrainedCNN(),
+            rnn_hidden_size=rnn_hidden_size,
+            rnn_layers=rnn_layers,
+            rnn_type=rnn_type
+        )
+        self.head = MLPHead(
+            rnn_hidden_size=rnn_hidden_size,
+            telemetry_dim=telemetry_dim,
+            act_buf_dim=act_buf_dim,
+            action_dim=action_dim,
+            q_net=True,
+            mlp_layers=mlp_layers
+        )
+
+    def forward(self, obs, act):
+        # obs: (speed, gear, rpm, ..., telemetry_n, images_seq, *acts)
+        telemetry_dim = self.head.telemetry_dim
+        telemetry = [obs[i] for i in range(telemetry_dim)]
+        images_seq = obs[telemetry_dim]
+        acts = obs[telemetry_dim + 1:]
+        acts = list(obs[telemetry_dim + 1:]) + [act]
+
+        rnn_out = self.cnn_encoder(images_seq)
+        q = self.head(telemetry, rnn_out, acts)
+    
+        return torch.squeeze(q, -1)
+
+
+class CNNRNNActorCritic(nn.Module):
+    def __init__(self, observation_space, action_space):
+        super().__init__()
+        self.actor = CNNRNNActor(observation_space, action_space)
+        self.q1 = CNNRNNQFunction(observation_space, action_space)
+        self.q2 = CNNRNNQFunction(observation_space, action_space)
+
+    def act(self, obs, test=False):
+        with torch.no_grad():
+            a, _ = self.actor(obs, test, False)
+            return a.squeeze().cpu().numpy()
 
 # UNSUPPORTED ==========================================================================================================
 
 
-# RNN: ==========================================================
+# RNN OLD: ==========================================================
 
 
 def rnn(input_size, rnn_size, rnn_len):
