@@ -34,24 +34,26 @@ def view_input_tensor(x):
     i = 0
 
     # Desempaquetar los datos del batch
-    speed, gear, rpm, images, prev_act1, prev_act2 = x  # Ajusta esto si tienes más/menos elementos
+    speed, gear, rpm, images, *prev_act = x  # Ajusta esto si tienes más/menos elementos
 
     # Seleccionar el i-ésimo elemento de cada uno
     s_val = speed[i].cpu().numpy().item()
     g_val = gear[i].cpu().numpy().item()
     r_val = rpm[i].cpu().numpy().item()
-    pa1_val = prev_act1[i].cpu().numpy()
-    pa2_val = prev_act2[i].cpu().numpy()
+    
+    acts_vals = [pa[i].detach().cpu().numpy() for pa in prev_act]
 
     # Armar string para el título
-    title_str = f"Speed: {s_val:.2f}, Gear: {g_val:.0f}, RPM: {r_val:.0f}, " \
-                f"Prev Act1: {pa1_val}, Prev Act2: {pa2_val}"
+    acts_str = ", ".join([f"Prev Act{j+1}: {val}" for j, val in enumerate(acts_vals)])
+    title_str = f"Speed: {s_val:.2f}, Gear: {g_val:.2f}, RPM: {r_val:.2f}, {acts_str}"
 
     # Extraer imágenes
-    img_tensor = images[i]  # shape: (12, H, W)
+    img_tensor = images[i]  # shape: (num_imgs, H, W, C)
+
+    print(f"Imagenes tensor shape: {img_tensor.shape}")
 
     # Número de imágenes RGB históricas
-    num_rgb_frames = img_tensor.shape[0] // 3
+    num_rgb_frames = img_tensor.shape[0]
 
     # Crear figura
     fig, axs = plt.subplots(1, num_rgb_frames, figsize=(4 * num_rgb_frames, 4))
@@ -62,8 +64,7 @@ def view_input_tensor(x):
         axs = [axs]
 
     for j in range(num_rgb_frames):
-        rgb = img_tensor[j*3:(j+1)*3].cpu().numpy()
-        rgb = rgb.transpose(1, 2, 0)
+        rgb = img_tensor[j].cpu().numpy()  # (H, W, C)
         axs[j].imshow(rgb)
         axs[j].set_title(f"Frame {j}")
         axs[j].axis('off')
@@ -800,8 +801,8 @@ class StackedChannelCNNActor(TorchActorModule):
         nn.init.constant_(self.log_std_layer.bias, -0.5) """
 
         # Debug TODO: borrar 
-        """ print("mu_layer.bias:", self.mu_layer.bias.data)
-        print("log_std_layer.bias:", self.log_std_layer.bias.data) """
+        print("mu_layer.bias:", self.mu_layer.bias.data)
+        print("log_std_layer.bias:", self.log_std_layer.bias.data)
 
     def forward(self, obs, test=False, with_logprob=True):
         
@@ -1074,12 +1075,13 @@ class CNNRNNActor(TorchActorModule):
         self.log_std_layer = nn.Linear(mlp_layers[-1], dim_act)
         self.act_limit = act_limit
 
-        # Inicialización de pesos de salida
+        # Cargar pesos y sesgos de mu_layer esto es para que inicie acelerando y yendo derecho
+        desired_action = torch.tensor([0.5, 0.0])  # En el espacio final de acción, eso es si se usa un espacio de accion de 2
+        unsquashed = torch.atanh(desired_action)  # Inverso de tanh
+
         with torch.no_grad():
-            nn.init.zeros_(self.mu_layer.weight)
-            self.mu_layer.bias.fill_(0.0)
-            nn.init.zeros_(self.log_std_layer.weight)
-            self.log_std_layer.bias.fill_(-0.5)
+            nn.init.zeros_(self.mu_layer.weight)  # Sin contribución de la red
+            self.mu_layer.bias.copy_(unsquashed)
 
     def forward(self, obs, test=False, with_logprob=True):
 

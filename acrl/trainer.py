@@ -67,7 +67,7 @@ memory_cls = partial(MemoryFull,
 
 # Model:
 
-model_cls = CNNRNNActorCritic #StackedChannelCNNActorCritic
+model_cls = StackedChannelCNNActorCritic #CNNRNNActorCritic #
 
 # Training agent:
 

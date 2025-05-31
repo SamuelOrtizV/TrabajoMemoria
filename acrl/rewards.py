@@ -187,10 +187,10 @@ class RewardFunction:
                 self.car_damage[i] = telemetry_data["car_damage"][i]
 
         # Penalty for continuous collision
-        """ if collision and max(telemetry_data["car_damage"]) > 0:
+        if collision and max(telemetry_data["car_damage"]) > 0:
             reward += self.penalty_collision
             if self.mistake_collision:
-                mistake = True """
+                mistake = True
 
         # Termination conditions
         if mistake:
@@ -244,7 +244,7 @@ class RewardFunction:
         avg_collision = sum(self.collision_buffer) / len(self.collision_buffer)
 
         # Si el auto no esta quieto y la muchos de los frames del buffer son de bloqueo lateral, se considera que hay colisión
-        if telemetry_data["speed"] > 1 and avg_collision > 0.4:
+        if telemetry_data["speed"] > 1 and avg_collision > 0.5:
             collision = True
         else:
             collision = False

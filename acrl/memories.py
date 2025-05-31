@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import tmrl.config.config_constants as cfg
 
 # local imports
 from tmrl.memory import TorchMemory
@@ -13,20 +14,6 @@ def last_true_in_list(li):
         if li[i]:
             return i
     return None
-
-
-def replace_hist_before_eoe(hist, eoe_idx_in_hist):
-    """
-    Pads the history hist before the End Of Episode (EOE) index.
-
-    Previous entries in hist are padded with copies of the first element occurring after EOE.
-    """
-    last_idx = len(hist) - 1
-    assert eoe_idx_in_hist <= last_idx, f"replace_hist_before_eoe: eoe_idx_in_hist:{eoe_idx_in_hist}, last_idx:{last_idx}"
-    if 0 <= eoe_idx_in_hist < last_idx:
-        for i in reversed(range(len(hist))):
-            if i <= eoe_idx_in_hist:
-                hist[i] = hist[i + 1]
 
 # LOCAL BUFFER COMPRESSION ===============================================================
 
@@ -152,10 +139,13 @@ class MemoryEnv(TorchMemory):
                  sample_preprocessor: callable = None,
                  crc_debug=False,
                  device="cpu"):
+        self.img_stride = cfg.TMRL_CONFIG["IMG_STRIDE"]
+
         self.imgs_obs = imgs_obs
         self.act_buf_len = act_buf_len
         self.min_samples = max(self.imgs_obs, self.act_buf_len)
-        self.start_imgs_offset = max(0, self.min_samples - self.imgs_obs)
+        #self.start_imgs_offset = max(0, self.min_samples - self.imgs_obs)
+        self.start_imgs_offset = max(0, self.min_samples - (self.imgs_obs * self.img_stride))
         self.start_acts_offset = max(0, self.min_samples - self.act_buf_len)
         super().__init__(memory_size=memory_size,
                          batch_size=batch_size,
@@ -207,21 +197,32 @@ class MemoryFull(MemoryEnv):
         last_act_buf = acts[:-1]
         new_act_buf = acts[1:]
 
-        imgs = self.load_imgs(item)
+        imgs = self.load_imgs(idx_now)
         imgs_last_obs = imgs[:-1]
         imgs_new_obs = imgs[1:]
 
-        # if a reset transition has influenced the observation, special care must be taken
-        last_eoes = self.data[4][idx_now - self.min_samples:idx_now]  # self.min_samples values
-        last_eoe_idx = last_true_in_list(last_eoes)  # last occurrence of True
+        # Calcula los índices usados para imgs_last_obs y imgs_new_obs
+        all_indices = list(range(idx_now - self.imgs_obs * self.img_stride, idx_now + 1))
 
-        assert last_eoe_idx is None or last_eoes[last_eoe_idx], f"last_eoe_idx:{last_eoe_idx}"
-
-        if last_eoe_idx is not None:
-            replace_hist_before_eoe(hist=new_act_buf, eoe_idx_in_hist=last_eoe_idx - self.start_acts_offset - 1)
-            replace_hist_before_eoe(hist=last_act_buf, eoe_idx_in_hist=last_eoe_idx - self.start_acts_offset)
-            replace_hist_before_eoe(hist=imgs_new_obs, eoe_idx_in_hist=last_eoe_idx - self.start_imgs_offset - 1)
-            replace_hist_before_eoe(hist=imgs_last_obs, eoe_idx_in_hist=last_eoe_idx - self.start_imgs_offset)
+        # Busca todos los EOE en la ventana
+        eoe_positions = [i for i, idx in enumerate(all_indices) if self.data[4][idx]]
+        if eoe_positions:
+            eoe_idx = eoe_positions[0]  # Primer EOE encontrado
+            dist_to_start = eoe_idx
+            dist_to_end = len(all_indices) - 1 - eoe_idx
+            if dist_to_start < dist_to_end:
+                # Mueve item hacia adelante para dejar el EOE fuera por la izquierda
+                item = item + (eoe_idx + 1)
+            else:
+                # Mueve item hacia atrás para dejar el EOE fuera por la derecha
+                item = item - (len(all_indices) - eoe_idx)
+            # Si el nuevo item es válido, vuelve a intentar
+            if 0 <= item < self.__len__():
+                return self.get_transition(item)
+            else:
+                # Si no es válido, elige uno random como fallback
+                new_item = random.randint(0, self.__len__() - 1)
+                return self.get_transition(new_item)
 
         last_obs = (self.data[2][idx_last], self.data[7][idx_last], self.data[8][idx_last], imgs_last_obs, *last_act_buf)
         new_act = self.data[1][idx_now]
@@ -230,10 +231,13 @@ class MemoryFull(MemoryEnv):
         terminated = self.data[9][idx_now]
         truncated = self.data[10][idx_now]
         info = self.data[6][idx_now]
+
         return last_obs, new_act, rew, new_obs, terminated, truncated, info
 
-    def load_imgs(self, item):
-        res = self.data[3][(item + self.start_imgs_offset):(item + self.start_imgs_offset + self.imgs_obs + 1)]
+    def load_imgs(self, idx_final):
+        #res = self.data[3][(item + self.start_imgs_offset):(item + self.start_imgs_offset + self.imgs_obs + 1)]
+        indices = [idx_final - i * self.img_stride for i in reversed(range(self.imgs_obs + 1))]
+        res = [self.data[3][idx] for idx in indices]
         return np.stack(res)
 
     def load_acts(self, item):
