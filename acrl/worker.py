@@ -48,7 +48,7 @@ class CustomRolloutWorker(RolloutWorker):
         self.best_test_reward = 0.0  # Variable para rastrear el récord en pruebas
         self.weights = None
         self.infer_memory = MemoryFull(
-                            memory_size=cfg.TMRL_CONFIG["IMG_STRIDE"] * cfg.IMG_HIST_LEN,
+                            memory_size=cfg.TMRL_CONFIG["IMG_STRIDE"] * cfg.IMG_HIST_LEN * 2,
                             batch_size=1,
                             imgs_obs=cfg.IMG_HIST_LEN,
                             act_buf_len=cfg.ACT_BUF_LEN,
