@@ -45,9 +45,4 @@ black car county - short
 silverstone - national
 
 
-Agregar a la config:
-    Tipo de rnn
-    CNN de imagenet
-    Si cargar pesos pre-entrenados
-
 Modificar el cfg para poner un apartado de hiperparametros del modelo

@@ -4,7 +4,7 @@ from tmrl.networking import RolloutWorker, print_with_timestamp
 from tmrl.util import partial
 from custom_models import StackedChannelCNNActor, HumanActor, CNNRNNActor
 from environment import AC_Interface
-from memories import get_local_buffer_sample_imgs
+from memories import get_local_buffer_sample_imgs, MemoryFull
 from tmrl.envs import GenericGymEnv
 
 # Set this to True only for debugging your pipeline.
@@ -33,6 +33,7 @@ env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config":
 import numpy as np
 import itertools
 import datetime
+from types import SimpleNamespace
 
 # Custom rollout worker para poder guardar los pesos de los mejores desempeños
 class CustomRolloutWorker(RolloutWorker):
@@ -46,6 +47,37 @@ class CustomRolloutWorker(RolloutWorker):
         super().__init__(*args, **kwargs)
         self.best_test_reward = 0.0  # Variable para rastrear el récord en pruebas
         self.weights = None
+        self.infer_memory = MemoryFull(
+                            memory_size=cfg.TMRL_CONFIG["IMG_STRIDE"] * cfg.IMG_HIST_LEN,
+                            batch_size=1,
+                            imgs_obs=cfg.IMG_HIST_LEN,
+                            act_buf_len=cfg.ACT_BUF_LEN,
+                            device=self.device  
+                            )
+
+    def act(self, obs, test=False):
+        # Empaqueta la observación como espera append_buffer (puedes poner dummy para los campos que no usas)
+        dummy_sample = (
+                        0,  # acción previa (dummy)
+                        (obs[0], obs[1], obs[2], obs[3], *obs[4:]),  # telemetría, imágenes, acciones previas (de largo variable)
+                        0.0,  # reward (dummy)
+                        False,  # terminated (dummy)
+                        False,  # truncated (dummy)
+                        {}      # info (dummy)
+                        )
+    
+        dummy_buffer = SimpleNamespace(memory=[dummy_sample])
+        self.infer_memory.append_buffer(dummy_buffer)
+
+        # Solo avanza el índice si hay suficientes muestras
+        if len(self.infer_memory) > 0:
+            last_obs, _, _, _, _, _, _ = self.infer_memory.get_transition(len(self.infer_memory) - 1)
+            obs_for_model = (last_obs[0], last_obs[1], last_obs[2], last_obs[3], *last_obs[4:])
+            action = self.actor.act_(obs_for_model, test=test)
+        else:
+            # Si no hay suficientes, usa la obs actual
+            action = self.actor.act_(obs, test=test)
+        return action
 
     def run_episode(self, max_samples=None, train=False):
         """
@@ -140,7 +172,7 @@ if __name__ == "__main__":
         sample_compressor=get_local_buffer_sample_imgs,  #cfg_obj.SAMPLE_COMPRESSOR, #
         device= "cuda" if cfg.CUDA_INFERENCE else "cpu",  # True if CUDA, False if CPU (rollout worker)
         max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE,
-        standalone=STANDALONE, #FIXME No funciona bien
+        standalone=STANDALONE,
         server_ip=cfg.SERVER_IP_FOR_WORKER,
         crc_debug=CRC_DEBUG)
 

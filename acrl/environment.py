@@ -19,7 +19,6 @@ import numpy as np
 from rtgym import RealTimeGymInterface
 import tmrl.config.config_constants as cfg
 
-
 class AC_Interface(RealTimeGymInterface):
     """
     This is the API needed for the algorithm to control Assetto Corsa.

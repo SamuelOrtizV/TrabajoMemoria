@@ -700,6 +700,16 @@ class VanillaCNN(Module):
         images = images.float() / 255.0
         images = self.stack_hist_images(images)
 
+        # Imprime los valores de telemetría y acciones previas
+        """ print(
+            "speed:", np.round(speed.flatten().cpu().numpy(), 2),
+            "gear:", np.round(gear.flatten().cpu().numpy(), 2),
+            "rpm:", np.round(rpm.flatten().cpu().numpy(), 2),
+            "prev_acts:", 
+            "[" + ", ".join([str(np.round(a.flatten().cpu().numpy(), 2)) for a in acts]) + "]"
+        )
+        """
+
         x_conv = F.relu(self.conv1(images))
         x_conv = F.relu(self.conv2(x_conv))
         x_conv = F.relu(self.conv3(x_conv))
