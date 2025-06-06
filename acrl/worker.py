@@ -59,28 +59,29 @@ class CustomRolloutWorker(RolloutWorker):
                             )
 
     def act(self, obs, test=False):
-        # Empaqueta la observación como espera append_buffer (puedes poner dummy para los campos que no usas)
-        dummy_sample = (
-                        0,  # acción previa (dummy)
-                        (obs[0], obs[1], obs[2], obs[3], *obs[4:]),  # telemetría, imágenes, acciones previas (de largo variable)
-                        0.0,  # reward (dummy)
-                        False,  # terminated (dummy)
-                        False,  # truncated (dummy)
-                        {}      # info (dummy)
-                        )
-    
-        dummy_buffer = SimpleNamespace(memory=[dummy_sample])
-        self.infer_memory.append_buffer(dummy_buffer)
+        if cfg.TMRL_CONFIG["IMG_STRIDE"] > 1:
+            # Lógica personalizada con infer_memory
+            dummy_sample = (
+                0,
+                (obs[0], obs[1], obs[2], obs[3], *obs[4:]),
+                0.0,
+                False,
+                False,
+                {}
+            )
+            dummy_buffer = SimpleNamespace(memory=[dummy_sample])
+            self.infer_memory.append_buffer(dummy_buffer)
 
-        # Solo avanza el índice si hay suficientes muestras
-        if len(self.infer_memory) > 0:
-            last_obs, _, _, _, _, _, _ = self.infer_memory.get_transition(len(self.infer_memory) - 1)
-            obs_for_model = (last_obs[0], last_obs[1], last_obs[2], last_obs[3], *last_obs[4:])
-            action = self.actor.act_(obs_for_model, test=test)
+            if len(self.infer_memory) > 0:
+                last_obs, _, _, _, _, _, _ = self.infer_memory.get_transition(len(self.infer_memory) - 1)
+                obs_for_model = (last_obs[0], last_obs[1], last_obs[2], last_obs[3], *last_obs[4:])
+                action = self.actor.act_(obs_for_model, test=test)
+            else:
+                action = self.actor.act_(obs, test=test)
+            return action
         else:
-            # Si no hay suficientes, usa la obs actual
-            action = self.actor.act_(obs, test=test)
-        return action
+            # Usa el método original de la clase base
+            return super().act(obs, test=test)
 
     def run_episode(self, max_samples=None, train=False):
         """
