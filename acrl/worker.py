@@ -34,7 +34,7 @@ import numpy as np
 import itertools
 import datetime
 from types import SimpleNamespace
-
+from torch.utils.tensorboard import SummaryWriter
 # Custom rollout worker para poder guardar los pesos de los mejores desempeños
 class CustomRolloutWorker(RolloutWorker):
     def __init__(self, *args, **kwargs):
@@ -47,6 +47,9 @@ class CustomRolloutWorker(RolloutWorker):
         super().__init__(*args, **kwargs)
         self.best_test_reward = 0.0  # Variable para rastrear el récord en pruebas
         self.weights = None
+        self.tb_writer = SummaryWriter(log_dir="runs/worker_logs")
+        self.episode_counter_train = 0
+        self.episode_counter_test = 0
         self.infer_memory = MemoryFull(
                             memory_size=cfg.TMRL_CONFIG["IMG_STRIDE"] * cfg.IMG_HIST_LEN * 2,
                             batch_size=1,
@@ -107,6 +110,16 @@ class CustomRolloutWorker(RolloutWorker):
         self.buffer.stat_test_return = ret
         self.buffer.stat_test_steps = steps
 
+        if hasattr(self, "tb_writer"):
+            if train:
+                self.tb_writer.add_scalar("train/episode_reward", ret, self.episode_counter_train)
+                self.tb_writer.add_scalar("train/episode_length", steps, self.episode_counter_train)
+                self.episode_counter_train += 1
+            else:
+                self.tb_writer.add_scalar("test/episode_reward", ret, self.episode_counter_test)
+                self.tb_writer.add_scalar("test/episode_length", steps, self.episode_counter_test)
+                self.episode_counter_test += 1
+
         # Guardar los pesos del modelo si se rompe el récord de recompensa conseguida (solo en episodios de test)
         if not train and ret > self.best_test_reward and not self.standalone:
             self.best_test_reward = ret
@@ -161,7 +174,7 @@ class CustomRolloutWorker(RolloutWorker):
 if cfg.TMRL_CONFIG["HUMAN_WORKER"]:
     actor_module_cls = HumanActor
 else:
-    actor_module_cls = StackedChannelCNNActor #CNNRNNActor #
+    actor_module_cls = StackedChannelCNNActor # CNNRNNActor #
 
 # Instantiation of the RolloutWorker object:
 

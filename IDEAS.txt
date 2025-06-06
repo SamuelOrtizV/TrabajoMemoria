@@ -46,3 +46,5 @@ silverstone - national
 
 
 Modificar el cfg para poner un apartado de hiperparametros del modelo
+
+Añadir TENSORBOARD AL TRABAJADOR!
