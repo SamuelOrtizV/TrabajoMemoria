@@ -186,12 +186,9 @@ class CustomRolloutWorker(RolloutWorker):
         El título se imprime por consola.
         """
 
-        print("\n--- [DEBUG] Tipos de entrada en forward ---")
+        """ print("\n--- [DEBUG] Tipos de entrada en forward ---")
         for i, item in enumerate(x):
-            print(f"x[{i}] type: {type(item)}, shape: {getattr(item, 'shape', 'N/A')}")
-       
-        # Índice del batch que quieres visualizar
-        i = 0
+            print(f"x[{i}] type: {type(item)}, shape: {getattr(item, 'shape', 'N/A')}") """
 
         # Desempaquetar los datos del batch
         speed, gear, rpm, images, *prev_act = x
@@ -202,7 +199,7 @@ class CustomRolloutWorker(RolloutWorker):
         max_gear = 10
         max_rpm = 20000
 
-        s_val = speed.item() * max_speed
+        s_val = speed.item() * max_speed #TODO revisar si es necesario usar el item() aquí
         g_val = gear.item() * max_gear
         r_val = rpm.item() * max_rpm
         acts_vals = [pa for pa in prev_act]
