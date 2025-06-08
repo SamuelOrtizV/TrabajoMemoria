@@ -6,6 +6,9 @@ from custom_models import StackedChannelCNNActor, HumanActor, CNNRNNActor
 from environment import AC_Interface
 from memories import get_local_buffer_sample_imgs, MemoryFull
 from tmrl.envs import GenericGymEnv
+from util import ImageVisualizer
+
+import cv2
 
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
@@ -36,6 +39,7 @@ import datetime
 from types import SimpleNamespace
 from torch.utils.tensorboard import SummaryWriter
 # Custom rollout worker para poder guardar los pesos de los mejores desempeños
+
 class CustomRolloutWorker(RolloutWorker):
     def __init__(self, *args, **kwargs):
         """
@@ -47,6 +51,8 @@ class CustomRolloutWorker(RolloutWorker):
         super().__init__(*args, **kwargs)
         self.best_test_reward = 0.0  # Variable para rastrear el récord en pruebas
         self.weights = None
+        self.view_input = cfg.TMRL_CONFIG["VIEW_INPUT_TENSOR"] #TODO agregarlo al cfg
+        self.visualizer = ImageVisualizer(title="Input tensor visualization")
         self.tb_writer = SummaryWriter(log_dir="runs/worker_logs")
         self.episode_counter_train = 0
         self.episode_counter_test = 0
@@ -59,6 +65,9 @@ class CustomRolloutWorker(RolloutWorker):
                             )
 
     def act(self, obs, test=False):
+        if self.view_input:
+            self.view_input_tensor(obs)
+
         if cfg.TMRL_CONFIG["IMG_STRIDE"] > 1:
             # Lógica personalizada con infer_memory
             dummy_sample = (
@@ -70,7 +79,7 @@ class CustomRolloutWorker(RolloutWorker):
                 {}
             )
             dummy_buffer = SimpleNamespace(memory=[dummy_sample])
-            self.infer_memory.append_buffer(dummy_buffer)
+            self.infer_memory.append_buffer(dummy_buffer) #FIXME CREO QUE HAY QUE PONERLE EL SAMPLE COMPRESSOR
 
             if len(self.infer_memory) > 0:
                 last_obs, _, _, _, _, _, _ = self.infer_memory.get_transition(len(self.infer_memory) - 1)
@@ -170,6 +179,56 @@ class CustomRolloutWorker(RolloutWorker):
                 print_with_timestamp("model weights have been updated")
         return nb_received
 
+    def view_input_tensor(self, x):
+        """
+        Visualiza la información pasada al agente usando Tkinter.
+        Las imágenes históricas se concatenan horizontalmente (más antigua a la izquierda).
+        El título se imprime por consola.
+        """
+
+        print("\n--- [DEBUG] Tipos de entrada en forward ---")
+        for i, item in enumerate(x):
+            print(f"x[{i}] type: {type(item)}, shape: {getattr(item, 'shape', 'N/A')}")
+       
+        # Índice del batch que quieres visualizar
+        i = 0
+
+        # Desempaquetar los datos del batch
+        speed, gear, rpm, images, *prev_act = x
+
+        # Seleccionar el i-ésimo elemento de cada uno
+        #TODO DESNORMALIZAR ESTOS VALORES
+        max_speed = 400
+        max_gear = 10
+        max_rpm = 20000
+
+        s_val = speed.item() * max_speed
+        g_val = gear.item() * max_gear
+        r_val = rpm.item() * max_rpm
+        acts_vals = [pa for pa in prev_act]
+
+        # Armar string para el título
+        acts_str = ", ".join([f"Prev Act{j+1}: {val}" for j, val in enumerate(acts_vals)])
+        title_str = f"Speed: {s_val:.0f}, Gear: {g_val:.0f}, RPM: {r_val:.0f}, {acts_str}"
+        #print(title_str)
+
+        # Extraer imágenes
+        img_tensor = images  # shape: (num_imgs, H, W, C)
+
+        # Convertir a numpy y uint8 si es necesario
+        imgs = img_tensor
+        if imgs.dtype != np.uint8:
+            imgs = (imgs * 255).astype(np.uint8) if imgs.max() <= 1.0 else imgs.astype(np.uint8)
+
+        # Convertir a lista de imágenes individuales
+        img_list = [img for img in imgs]  # Cada img: (H, W, C)
+
+        # Concatenar horizontalmente usando OpenCV
+        concat_img = cv2.hconcat(img_list)  # (H, num_imgs*W, C)
+
+        # Visualización con OpenCV (convertir a BGR si es necesario)
+        cv2.imshow("Input tensor visualization", concat_img[..., ::-1])
+        cv2.waitKey(1)
 
 # ActorModule:
 if cfg.TMRL_CONFIG["HUMAN_WORKER"]:

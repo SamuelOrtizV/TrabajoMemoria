@@ -19,9 +19,12 @@ from tmrl.actor import TorchActorModule
 import tmrl.config.config_constants as cfg
 
 from inputs.xbox_controller_inputs import XboxControllerReader
+
+
 # SUPPORTED ============================================================================================================
 
-def view_input_tensor(x):
+
+def view_input_tensor_matplotlib(x):
 
     "Allows to visualize the information passed down to the agent"
 
@@ -657,11 +660,31 @@ def conv2d_out_dims(conv_layer, h_in, w_in):
     w_out = floor((w_in + 2 * conv_layer.padding[1] - conv_layer.dilation[1] * (conv_layer.kernel_size[1] - 1) - 1) / conv_layer.stride[1] + 1)
     return h_out, w_out
 
+def replace_first_conv(model, in_channels):
+    """
+    Reemplaza recursivamente la primera capa Conv2d de un modelo por una con in_channels.
+    """
+    for name, module in model.named_children():
+        if isinstance(module, nn.Conv2d):
+            if module.in_channels != in_channels:
+                new_conv = nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=module.out_channels,
+                    kernel_size=module.kernel_size,
+                    stride=module.stride,
+                    padding=module.padding,
+                    bias=module.bias is not None
+                )
+                setattr(model, name, new_conv)
+            return True  # Ya reemplazado
+        elif replace_first_conv(module, in_channels):
+            return True
+    return False
 
 class VanillaCNN(Module):
-    def __init__(self, q_net, action_space_size):
+    def __init__(self, action_space_size):
         super(VanillaCNN, self).__init__()
-        self.q_net = q_net
+        #self.q_net = q_net
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
         self.hist_len = cfg.IMG_HIST_LEN
         self.num_channels = 1 if cfg.GRAYSCALE else 3
@@ -679,47 +702,37 @@ class VanillaCNN(Module):
         self.out_channels = self.conv4.out_channels
         self.flat_features = self.out_channels * self.h_out * self.w_out
 
-        self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
+        """ self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
 
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
-
-    def stack_hist_images(self, images):
+    
+     def stack_hist_images(self, images):
         # images: (batch, hist_len, H, W, C)
         batch_size, hist_len, height, width, channels = images.shape
         images = images.permute(0, 1, 4, 2, 3)  # (batch, hist_len, C, H, W)
         images = images.reshape(batch_size, hist_len * channels, height, width)  # (batch, hist_len*C, H, W)
-        return images   
+        return images """   
 
     def forward(self, x):
 
-        #view_input_tensor(x)
-
-        speed, gear, rpm, images, *acts = x
+        """ speed, gear, rpm, images, *acts = x
         # Normalizar imágenes
         images = images.float() / 255.0
-        images = self.stack_hist_images(images)
+        images = self.stack_hist_images(images) """
 
-        # Imprime los valores de telemetría y acciones previas
-        """ print(
-            "speed:", np.round(speed.flatten().cpu().numpy(), 2),
-            "gear:", np.round(gear.flatten().cpu().numpy(), 2),
-            "rpm:", np.round(rpm.flatten().cpu().numpy(), 2),
-            "prev_acts:", 
-            "[" + ", ".join([str(np.round(a.flatten().cpu().numpy(), 2)) for a in acts]) + "]"
-        )
-        """
+        x = x.float() / 255.0  # Normalizar imágenes
 
-        x_conv = F.relu(self.conv1(images))
+        x_conv = F.relu(self.conv1(x))
         x_conv = F.relu(self.conv2(x_conv))
         x_conv = F.relu(self.conv3(x_conv))
         x_conv = F.relu(self.conv4(x_conv))
 
         flat_features = num_flat_features(x_conv)
-        assert flat_features == self.flat_features, f"x.shape:{x_conv.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
+        #assert flat_features == self.flat_features, f"x.shape:{x_conv.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
         x_conv = x_conv.view(-1, flat_features)
 
-        # Concatenar características adicionales
+        """ # Concatenar características adicionales
         if self.q_net:
             prev_acts = acts[:-1]
             act = acts[-1]
@@ -728,8 +741,8 @@ class VanillaCNN(Module):
             prev_acts = acts
             x_cat = torch.cat((speed, gear, rpm, x_conv, *prev_acts), -1)
 
-        x_cat = self.mlp(x_cat)
-        return x_cat
+        x_cat = self.mlp(x_cat) """
+        return x_conv
 
 class StackedChannelCNN(Module):
     def __init__(self, q_net, action_space_size):
@@ -741,16 +754,24 @@ class StackedChannelCNN(Module):
         self.action_space_size = action_space_size
         self.act_buf_len = cfg.ACT_BUF_LEN
 
-        # Capas convolucionales con EfficientNet
-        self.cnn = effnetv2_s(
-            nb_channels_in=self.hist_len * self.num_channels,
-            dim_output=256,  # Salida de características de EfficientNet
-            width_mult=1.0
-        ).float()
+        # Intentar usar PreTrainedCNN, si falla usar VanillaCNN
+        try:
+            self.cnn = PreTrainedCNN(stacked_channels=self.hist_len)
+            # Determinar la dimensión de salida de la CNN preentrenada
+            with torch.no_grad():
+                dummy = torch.zeros(1, self.num_channels*self.hist_len, self.h_out, self.w_out)
+                cnn_out = self.cnn(dummy)
+                self.flat_features = cnn_out.shape[1]
+        except Exception as e:
+            print(f"[StackedChannelCNN] No se pudo usar PreTrainedCNN\n ({e})\n Usando VanillaCNN por defecto.")
+            self.cnn = VanillaCNN(action_space_size=action_space_size) #TODO ARREGLAR ESA CLASE PARA QUE SOLO SEA UNA CNN
+            self.flat_features = self.cnn.flat_features
 
         # Calcular las características planas de salida
-        self.flat_features = 256  # Salida de EfficientNet
-        self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
+        #self.flat_features = 256  # Salida de EfficientNet
+        self.mlp_input_features =   (self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1)
+                                    if self.q_net else
+                                    self.flat_features + 3 + self.action_space_size*self.act_buf_len)
         self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
         self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
 
@@ -763,10 +784,10 @@ class StackedChannelCNN(Module):
 
     def forward(self, x):
 
-        #view_input_tensor(x)
+        #view_input_tensor_matplotlib(x)
 
         speed, gear, rpm, images, *acts = x
-        images = images.float() / 255.0
+        #images = images.float() / 255.0
         images = self.stack_hist_images(images)
         cnn_out = self.cnn(images)
 
@@ -788,8 +809,7 @@ class StackedChannelCNNActor(TorchActorModule):
         dim_act = action_space.shape[0]
         act_limit = action_space.high[0]
 
-        self.net = VanillaCNN(q_net=False, action_space_size=dim_act)
-        #self.net = StackedChannelCNN(q_net=False, action_space_size=dim_act)
+        self.net = StackedChannelCNN(q_net=False, action_space_size=dim_act)
         
         self.mu_layer = nn.Linear(256, dim_act)
         self.log_std_layer = nn.Linear(256, dim_act)
@@ -878,8 +898,7 @@ class StackedChannelCNNQFunction(nn.Module):
         super().__init__()
         
         action_space_size = action_space.shape[0]
-        self.net = VanillaCNN(q_net=True, action_space_size=action_space_size)
-        #self.net = StackedChannelCNN(q_net=True, action_space_size=action_space_size)
+        self.net = StackedChannelCNN(q_net=True, action_space_size=action_space_size)
         self.grayscale = cfg.GRAYSCALE
         self.act_buf_len = cfg.ACT_BUF_LEN
 
@@ -908,10 +927,10 @@ class StackedChannelCNNActorCritic(nn.Module):
 from importlib import import_module
 
 class PreTrainedCNN(Module):
-    def __init__(self):
+    def __init__(self, stacked_channels=1):
         super(PreTrainedCNN, self).__init__()
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
-        self.num_channels = 1 if cfg.GRAYSCALE else 3
+        self.num_channels = (1 if cfg.GRAYSCALE else 3)*stacked_channels
 
         # Lee el nombre/clase de la CNN desde cfg
         cnn_name = cfg.TMRL_CONFIG["CNN_CLASS"]
@@ -926,12 +945,12 @@ class PreTrainedCNN(Module):
         
         # Si se piden pesos preentrenados, solo se permite para imágenes RGB
         if pretrained:
-            assert self.num_channels == 3, "Los pesos preentrenados solo están disponibles para imágenes RGB (3 canales)."
+            assert self.num_channels == 3 and not cfg.GRAYSCALE, "Los pesos preentrenados solo están disponibles para imágenes RGB (3 canales)."
 
         # Instancia la CNN
         self.cnn = imagenet_cnn_cls(weights="DEFAULT" if pretrained else None)
 
-        # Modifica la primera capa para aceptar self.num_channels
+        """ # Modifica la primera capa para aceptar self.num_channels
         first_conv = None
         for name, module in self.cnn.named_modules():
             if isinstance(module, nn.Conv2d):
@@ -953,7 +972,10 @@ class PreTrainedCNN(Module):
             for name, module in self.cnn.named_children():
                 if isinstance(module, nn.Conv2d):
                     setattr(self.cnn, name, new_conv)
-                    break
+                    break """
+
+        if not replace_first_conv(self.cnn, self.num_channels):
+            raise RuntimeError("No se pudo reemplazar la primera capa Conv2d para aceptar más canales.")
 
         # Quita la última capa (classifier/fc) para obtener solo features
         if hasattr(self.cnn, 'classifier'):
@@ -962,6 +984,8 @@ class PreTrainedCNN(Module):
             self.cnn_features = nn.Sequential(*(list(self.cnn.children())[:-1]))
         else:
             raise ValueError("No se reconoce la arquitectura de la CNN pasada.")
+        
+        print(f"[PreTrainedCNN] Usando {cnn_name} con {self.num_channels} canales de entrada y salida de características ({self.h_out}, {self.w_out})")
 
     def forward(self, images):
         images = images.float() / 255.0  # Espera (batch, C, H, W)
