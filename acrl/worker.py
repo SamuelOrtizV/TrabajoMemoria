@@ -65,8 +65,7 @@ class CustomRolloutWorker(RolloutWorker):
                             )
 
     def act(self, obs, test=False):
-        if self.view_input:
-            self.view_input_tensor(obs)
+        
 
         if cfg.TMRL_CONFIG["IMG_STRIDE"] > 1:
             # Lógica personalizada con infer_memory
@@ -78,13 +77,20 @@ class CustomRolloutWorker(RolloutWorker):
                 False,
                 {}
             )
+            # Aplica el sample compressor si está definido
+            if self.get_local_buffer_sample is not None:
+                dummy_sample = self.get_local_buffer_sample(*dummy_sample)
+
             dummy_buffer = SimpleNamespace(memory=[dummy_sample])
-            self.infer_memory.append_buffer(dummy_buffer) #FIXME CREO QUE HAY QUE PONERLE EL SAMPLE COMPRESSOR
+            self.infer_memory.append_buffer(dummy_buffer)
 
             if len(self.infer_memory) > 0:
                 last_obs, _, _, _, _, _, _ = self.infer_memory.get_transition(len(self.infer_memory) - 1)
                 obs_for_model = (last_obs[0], last_obs[1], last_obs[2], last_obs[3], *last_obs[4:])
                 action = self.actor.act_(obs_for_model, test=test)
+                
+                if self.view_input:
+                    self.view_input_tensor(last_obs)
             else:
                 action = self.actor.act_(obs, test=test)
             return action
