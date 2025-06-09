@@ -4,7 +4,7 @@ from tmrl.networking import RolloutWorker, print_with_timestamp
 from tmrl.util import partial
 from custom_models import StackedChannelCNNActor, HumanActor, CNNRNNActor
 from environment import AC_Interface
-from memories import get_local_buffer_sample_imgs, MemoryFull
+from memories import MemoryInference, get_local_buffer_sample_imgs
 from tmrl.envs import GenericGymEnv
 from util import ImageVisualizer
 
@@ -56,41 +56,28 @@ class CustomRolloutWorker(RolloutWorker):
         self.tb_writer = SummaryWriter(log_dir="runs/worker_logs")
         self.episode_counter_train = 0
         self.episode_counter_test = 0
-        self.infer_memory = MemoryFull(
-                            memory_size=cfg.TMRL_CONFIG["IMG_STRIDE"] * cfg.IMG_HIST_LEN * 2,
-                            batch_size=1,
-                            imgs_obs=cfg.IMG_HIST_LEN,
-                            act_buf_len=cfg.ACT_BUF_LEN,
-                            device=self.device  
-                            )
+        self.stride = cfg.TMRL_CONFIG["IMG_STRIDE"]
+        self.img_hist_len = cfg.IMG_HIST_LEN
+        self.act_buf_len = cfg.ACT_BUF_LEN
+        self.infer_memory = MemoryInference(
+                            capacity= self.img_hist_len* self.stride*2,
+                            hist_len=self.img_hist_len,
+                            act_len= self.act_buf_len,
+                            stride=self.stride)
+
 
     def act(self, obs, test=False):
-        
+        if self.stride > 1:            
+            self.infer_memory.append(obs)
 
-        if cfg.TMRL_CONFIG["IMG_STRIDE"] > 1:
-            # Lógica personalizada con infer_memory
-            dummy_sample = (
-                0,
-                (obs[0], obs[1], obs[2], obs[3], *obs[4:]),
-                0.0,
-                False,
-                False,
-                {}
-            )
-            # Aplica el sample compressor si está definido
-            if self.get_local_buffer_sample is not None:
-                dummy_sample = self.get_local_buffer_sample(*dummy_sample)
-
-            dummy_buffer = SimpleNamespace(memory=[dummy_sample])
-            self.infer_memory.append_buffer(dummy_buffer)
-
-            if len(self.infer_memory) > 0:
-                last_obs, _, _, _, _, _, _ = self.infer_memory.get_transition(len(self.infer_memory) - 1)
-                obs_for_model = (last_obs[0], last_obs[1], last_obs[2], last_obs[3], *last_obs[4:])
-                action = self.actor.act_(obs_for_model, test=test)
+            if len(self.infer_memory) > self.img_hist_len * self.stride:
                 
+                obs_for_model = self.infer_memory.get_transition()
+
+                action = self.actor.act_(obs_for_model, test=test)
+
                 if self.view_input:
-                    self.view_input_tensor(last_obs)
+                    self.view_input_tensor(obs_for_model)
             else:
                 action = self.actor.act_(obs, test=test)
             return action

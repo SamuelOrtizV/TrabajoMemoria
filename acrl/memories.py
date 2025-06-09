@@ -304,3 +304,50 @@ class MemoryFull(MemoryEnv):
             self.data[10] = self.data[10][to_trim:]
 
         return self
+    
+# INFERENCE BUFFER =================================================================
+
+from collections import deque
+
+class MemoryInference:
+    def __init__(self, capacity, hist_len=4, act_len =2, stride=1):
+        self.buffer = deque(maxlen=capacity)
+        self.hist_len = hist_len
+        self.act_len = act_len
+        self.stride = stride
+
+    def append(self, obs):
+        """ Format obs as a tuple (speed, gear, rpm, images, *actions) """
+
+        last_obs = (obs[0],  # speed
+                    obs[1],  # gear
+                    obs[2],  # rpm
+                    obs[3][-1],  # last image
+                    obs[-1]) # last action
+
+        self.buffer.append(last_obs)
+
+    def __len__(self):
+        return len(self.buffer)
+    
+    def get_transition(self):
+        """Obtiene la transición actual para la inferencia."""
+        
+        last_idx = len(self.buffer) - 1
+
+        imgs_indices = [last_idx - i * self.stride for i in reversed(range(self.hist_len))]
+        acts_indices = [last_idx - i for i in reversed(range(self.act_len))]
+        #TODO: AGREGAR STRIDE A ACTS Y PROMEDIAR LOS VALORES INTERMEDIOS, AQUI Y EN MEMORYFULL
+
+        imgs = [self.buffer[idx][3] for idx in imgs_indices]
+        imgs = np.stack(imgs)
+
+        actions = [self.buffer[idx][4] for idx in acts_indices]
+
+        last_obs = (self.buffer[last_idx][0],
+                    self.buffer[last_idx][1],
+                    self.buffer[last_idx][2],
+                    imgs,
+                    *actions)
+
+        return last_obs
