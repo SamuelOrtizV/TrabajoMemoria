@@ -69,12 +69,16 @@ class CustomRolloutWorker(RolloutWorker):
                             stride=self.stride)
 
     def get_last_step(self, log_dir, tag): #tal vez se puede sacar de la clase 
-        from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
         import os
-        # Busca el último archivo de eventos en el directorio
+        from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+
+        if not os.path.exists(log_dir):
+            return 0  # La carpeta no existe, así que no hay episodios previos
+
         event_files = [f for f in os.listdir(log_dir) if f.startswith("events.out.tfevents")]
         if not event_files:
-            return 0
+            return 0  # No hay archivos de eventos
+
         event_file = max([os.path.join(log_dir, f) for f in event_files], key=os.path.getctime)
         ea = EventAccumulator(event_file)
         ea.Reload()
