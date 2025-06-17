@@ -85,6 +85,7 @@ class CustomRolloutWorker(RolloutWorker):
         if tag in ea.Tags()['scalars']:
             events = ea.Scalars(tag)
             if events:
+                print_with_timestamp(f"Last step for tag '{tag}': {events[-1].step + 1}")
                 return events[-1].step + 1  # Siguiente episodio
         return 0
 

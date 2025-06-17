@@ -126,6 +126,19 @@ class AC_Interface(RealTimeGymInterface):
         print("Telemetry data received\n")
         self.initialized = True
 
+    def force_min_max_speed(self, control):
+        """
+        Force the car to stop accelerating if it is above the max speed and forces the car to accelerate if it is below the min speed.
+        """
+
+        if self.speed > self.max_speed and self.max_speed > 0:
+            control[0] = min(0, control[0])
+
+        if self.speed < 20.0:
+            control[0] = max(0.3, control[0])
+
+        return control
+
     def send_control(self, control):
         """
         Non-blocking function
@@ -136,8 +149,7 @@ class AC_Interface(RealTimeGymInterface):
         """
         self.action = control
 
-        if self.speed > self.max_speed and self.max_speed > 0:
-            control[0] = min(0, control[0])
+        control = self.force_min_max_speed(control)
 
         if self.gamepad:
             if control is not None:
