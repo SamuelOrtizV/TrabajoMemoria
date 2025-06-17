@@ -53,9 +53,12 @@ class CustomRolloutWorker(RolloutWorker):
         self.weights = None
         self.view_input = cfg.TMRL_CONFIG["VIEW_INPUT_TENSOR"] #TODO agregarlo al cfg
         self.visualizer = ImageVisualizer(title="Input tensor visualization")
-        self.tb_writer = SummaryWriter(log_dir="runs/worker_logs")
-        self.episode_counter_train = 0
-        self.episode_counter_test = 0
+        log_dir = "runs/worker_logs" + cfg.RUN_NAME
+        train_tag = "train/episode_reward"
+        test_tag = "test/episode_reward"
+        self.episode_counter_train = self.get_last_step(log_dir, train_tag)
+        self.episode_counter_test = self.get_last_step(log_dir, test_tag)
+        self.tb_writer = SummaryWriter(log_dir=log_dir)
         self.stride = cfg.TMRL_CONFIG["IMG_STRIDE"]
         self.img_hist_len = cfg.IMG_HIST_LEN
         self.act_buf_len = cfg.ACT_BUF_LEN
@@ -65,6 +68,21 @@ class CustomRolloutWorker(RolloutWorker):
                             act_len= self.act_buf_len,
                             stride=self.stride)
 
+    def get_last_step(self, log_dir, tag): #tal vez se puede sacar de la clase 
+        from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+        import os
+        # Busca el último archivo de eventos en el directorio
+        event_files = [f for f in os.listdir(log_dir) if f.startswith("events.out.tfevents")]
+        if not event_files:
+            return 0
+        event_file = max([os.path.join(log_dir, f) for f in event_files], key=os.path.getctime)
+        ea = EventAccumulator(event_file)
+        ea.Reload()
+        if tag in ea.Tags()['scalars']:
+            events = ea.Scalars(tag)
+            if events:
+                return events[-1].step + 1  # Siguiente episodio
+        return 0
 
     def act(self, obs, test=False):
         if self.stride > 1:            
