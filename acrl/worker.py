@@ -34,6 +34,7 @@ env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config":
 # A RolloutWorker contains an ActorModule, which encapsulates its policy.
 
 import numpy as np
+import os
 import itertools
 import datetime
 from types import SimpleNamespace
@@ -49,7 +50,7 @@ class CustomRolloutWorker(RolloutWorker):
             record_model_path (str): Ruta donde se guardarán los pesos del modelo cuando se rompa el récord.
         """
         super().__init__(*args, **kwargs)
-        self.best_test_reward = 0.0  # Variable para rastrear el récord en pruebas
+        self.best_test_reward = self.init_best_test_reward()  # Variable para rastrear el récord en pruebas
         self.weights = None
         self.view_input = cfg.TMRL_CONFIG["VIEW_INPUT_TENSOR"] #TODO agregarlo al cfg
         self.visualizer = ImageVisualizer(title="Input tensor visualization")
@@ -69,7 +70,6 @@ class CustomRolloutWorker(RolloutWorker):
                             stride=self.stride)
 
     def get_last_step(self, log_dir, tag): #tal vez se puede sacar de la clase 
-        import os
         from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
         if not os.path.exists(log_dir):
@@ -88,7 +88,26 @@ class CustomRolloutWorker(RolloutWorker):
                 print_with_timestamp(f"Last step for tag '{tag}': {events[-1].step + 1}")
                 return events[-1].step + 1  # Siguiente episodio
         return 0
-
+    
+    def init_best_test_reward(self):
+          # --- Buscar archivos de pesos con "rec" en el nombre ---
+        if hasattr(self, "model_path_history"):
+            files = [f for f in os.listdir(self.model_path_history) if "rec" in f and f.endswith(".tmod")]
+            if files:
+                # Extraer el número de recompensa de cada archivo
+                rewards = []
+                for fname in files:
+                    # Ejemplo: rec_123.45.tmod
+                    try:
+                        num_str = fname.split("_")[-1].replace(".tmod", "")
+                        reward = float(num_str)
+                        rewards.append(reward)
+                    except Exception:
+                        continue
+                if rewards:
+                    return max(rewards)
+        return 0.0
+                    
     def act(self, obs, test=False):
         if self.stride > 1:            
             self.infer_memory.append(obs)
@@ -157,9 +176,10 @@ class CustomRolloutWorker(RolloutWorker):
         Guarda los pesos del modelo actual cuando se rompe el récord de distancia recorrida.
         """
         if self.weights is not None:
-            with open(self.model_path_history + str(self.best_test_reward) + ".tmod", 'wb') as f:
+            path = self.model_path_history +"rec_"+ str(self.best_test_reward) + ".tmod"
+            with open(path, 'wb') as f:
                 f.write(self.weights)
-            print_with_timestamp(f"Weights saved in: {self.model_path_history + str(self.best_test_reward) + ".tmod"}")
+            print_with_timestamp(f"Weights saved in: {path}")
         else:
             print("NO HAY PESOS!")
 
