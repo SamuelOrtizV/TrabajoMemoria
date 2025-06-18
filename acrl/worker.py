@@ -50,11 +50,13 @@ class CustomRolloutWorker(RolloutWorker):
             record_model_path (str): Ruta donde se guardarán los pesos del modelo cuando se rompa el récord.
         """
         super().__init__(*args, **kwargs)
+        self.weights_folder = cfg.WEIGHTS_FOLDER
+        self.run_name = cfg.RUN_NAME
         self.best_test_reward = self.init_best_test_reward()  # Variable para rastrear el récord en pruebas
         self.weights = None
         self.view_input = cfg.TMRL_CONFIG["VIEW_INPUT_TENSOR"] #TODO agregarlo al cfg
         self.visualizer = ImageVisualizer(title="Input tensor visualization")
-        log_dir = "runs/worker_logs" + cfg.RUN_NAME
+        log_dir = "runs/" + self.run_name
         train_tag = "train/episode_reward"
         test_tag = "test/episode_reward"
         self.episode_counter_train = self.get_last_step(log_dir, train_tag)
@@ -92,7 +94,7 @@ class CustomRolloutWorker(RolloutWorker):
     def init_best_test_reward(self):
           # --- Buscar archivos de pesos con "rec" en el nombre ---
         if hasattr(self, "model_path_history"):
-            files = [f for f in os.listdir(self.model_path_history) if "rec" in f and f.endswith(".tmod")]
+            files = [f for f in os.listdir(self.weights_folder) if "rec" in f and self.run_name in f and f.endswith(".tmod")]
             if files:
                 # Extraer el número de recompensa de cada archivo
                 rewards = []
@@ -105,6 +107,7 @@ class CustomRolloutWorker(RolloutWorker):
                     except Exception:
                         continue
                 if rewards:
+                    print_with_timestamp(f"Best test reward found in history: {max(rewards)}")
                     return max(rewards)
         return 0.0
                     
