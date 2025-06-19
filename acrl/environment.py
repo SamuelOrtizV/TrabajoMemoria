@@ -62,6 +62,7 @@ class AC_Interface(RealTimeGymInterface):
         self.best = 0.0
         self.time_step_duration = cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
         self.max_speed = cfg.ENV_CONFIG['MAX_SPEED'] # car stops accelerating if speed is above this limit
+        self.min_speed = cfg.ENV_CONFIG['MIN_SPEED'] # car accelerates if speed is below this limit
         self.speed = 0.0
 
         # Crear el visualizador
@@ -134,7 +135,7 @@ class AC_Interface(RealTimeGymInterface):
         if self.speed > self.max_speed and self.max_speed > 0:
             control[0] = min(0, control[0])
 
-        if self.speed < 20.0:
+        if self.speed < self.min_speed and self.min_speed > 0:
             control[0] = max(0.3, control[0])
 
         return control
