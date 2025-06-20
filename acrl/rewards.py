@@ -134,7 +134,7 @@ class RewardFunction:
         # Reward for reaching a checkpoint
         if checkpoint_difference > self.threshold_checkpoint and checkpoint_difference < 0.5:
             reward += self.reward_checkpoint
-            print(f"Checkpoint reached: {track_position}                                                                                                                                                              ")
+            #print(f"Checkpoint reached: {track_position}                                                                                                                                                              ")
             self.previous_checkpoint = track_position
 
         # Reward for progress on the track
