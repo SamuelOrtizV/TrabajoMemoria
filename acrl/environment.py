@@ -136,7 +136,7 @@ class AC_Interface(RealTimeGymInterface):
             control[0] = min(0, control[0])
 
         if self.speed < self.min_speed and self.min_speed > 0:
-            control[0] = max(0.3, control[0])
+            control[0] = 1
 
         return control
 
