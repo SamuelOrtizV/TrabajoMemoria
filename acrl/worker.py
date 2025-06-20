@@ -173,6 +173,7 @@ class CustomRolloutWorker(RolloutWorker):
             self.best_test_reward = ret
             print_with_timestamp(f"\n\n\n--------NEW RECORD in test episode: {self.best_test_reward}--------\n\n\n")
             self.save_best_model()
+        print("\n")
 
     def save_best_model(self): #
         """
