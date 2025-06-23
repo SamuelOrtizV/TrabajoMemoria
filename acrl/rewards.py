@@ -92,10 +92,15 @@ class RewardFunction:
         self.mistake_counter = 0
         self.no_mistake_counter = 0
 
-        self.previous_checkpoint = None
+        self.track_position = 0.0
+        self.previous_checkpoint = 0
         self.previous_lap = 0
 
         self.car_damage = [0.0, 0.0, 0.0, 0.0]
+
+        self.start_position = None
+        self.prev_pos = 0.0
+        self.lap_completed = False  # flag to check if a lap was completed
 
         self.last_action = None  # last action taken by the car
 
@@ -115,17 +120,27 @@ class RewardFunction:
         mistake = False  # flag to check if a mistake happened
         collision = self.collision_detection(telemetry_data, action)
 
-        track_position = telemetry_data["track_position"]
-        self.position_buffer.append(track_position)  # we add the current position to the buffer
+        og_track_position = telemetry_data["track_position"]        
+
+        if self.start_position is None:
+            self.start_position = og_track_position # we set the start position of the car
+
+        self.track_position = (og_track_position - self.start_position) % 1.0 # we normalize the track position to [0, 1]
+
+        self.position_buffer.append(self.track_position)  # we add the current position to the buffer
         progress = self.position_buffer[-1] - self.position_buffer[0]
-        if self.previous_checkpoint is None:
-            self.previous_checkpoint = track_position if track_position < 0.95 else 0.0 # Some tracks start before pos 0.0
-        checkpoint_difference = track_position - self.previous_checkpoint
+            
+        checkpoint_difference = self.track_position - self.previous_checkpoint
+
+        if self.track_position < 0.2 and self.prev_pos > 0.8:
+            self.lap_completed = True  # El auto acaba de dar una vuelta
+
+        self.prev_pos = self.track_position
 
         # ----------------------REWARDS---------------------------
 
         # Reward for completing a lap
-        if telemetry_data["laps"] > self.previous_lap:
+        if self.lap_completed: #telemetry_data["laps"] > self.previous_lap:
             #reward += self.reward_laps_weight
             #terminated = True
             #self.previous_lap = telemetry_data["laps"] 
@@ -135,7 +150,7 @@ class RewardFunction:
         if checkpoint_difference > self.threshold_checkpoint and checkpoint_difference < 0.5:
             reward += self.reward_checkpoint
             #print(f"Checkpoint reached: {track_position}                                                                                                                                                              ")
-            self.previous_checkpoint = track_position
+            self.previous_checkpoint = self.track_position
 
         # Reward for progress on the track
         if progress > 0.0:  # If we did progress on the track
@@ -212,9 +227,9 @@ class RewardFunction:
         reward = np.clip(reward, -1.0, 1.0)  # Clip the reward to [-1, 1]
 
         # Reward for completing a lap
-        if telemetry_data["laps"] > self.previous_lap:
+        if self.lap_completed: #telemetry_data["laps"] > self.previous_lap:
             reward += self.reward_laps_weight
-            self.previous_lap = telemetry_data["laps"]
+            #self.previous_lap = telemetry_data["laps"]
             terminated = True
 
         self.print_status(telemetry_data, action, collision)  # we print the status of the run
@@ -260,11 +275,15 @@ class RewardFunction:
         self.mistake_counter = 0
         self.no_mistake_counter = 0
         
-        self.previous_checkpoint = None
+        self.previous_checkpoint = 0
         self.previous_lap = 0
 
         self.car_damage = [0.0, 0.0, 0.0, 0.0]
         self.last_action = None
+
+        self.start_position = None
+        self.prev_pos = 0.0
+        self.track_position = 0.0
 
         self.position_buffer.clear()
         self.position_buffer.extend([0.0] * self.position_buffer.maxlen)

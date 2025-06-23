@@ -3,7 +3,7 @@
 from rewards import RewardFunction
 from UDP_listener import udp_listener
 from inputs.xbox_controller_emulator import XboxControllerEmulator
-from inputs.GameInputs import reset_race
+from inputs.GameInputs import reset_race, go_to_pits
 from window_interface import MSSWindowInterface
 from util import ImageVisualizer
 
@@ -58,12 +58,13 @@ class AC_Interface(RealTimeGymInterface):
         self.fullscreen = cfg.ENV_CONFIG['FULL_SCREEN']
         self.initialized = False
         self.ep_rew = []
-        self.action = None
-        self.best = 0.0
+        self.action = None        
         self.time_step_duration = cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration']
         self.max_speed = cfg.ENV_CONFIG['MAX_SPEED'] # car stops accelerating if speed is above this limit
         self.min_speed = cfg.ENV_CONFIG['MIN_SPEED'] # car accelerates if speed is below this limit
         self.speed = 0.0
+        self.go_to_pits = False
+        self.best = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
 
         # Crear el visualizador
         self.visualizer = ImageVisualizer()
@@ -200,6 +201,9 @@ class AC_Interface(RealTimeGymInterface):
             self.send_control(self.get_default_action())
             reset_race(cfg.SLEEP_TIME_AT_RESET)
             time.sleep(0.5)
+            print("Go to pits: ", self.go_to_pits)
+            if self.go_to_pits:
+                go_to_pits()
             self.controller.next_gear()
         else:
             reset_race(cfg.SLEEP_TIME_AT_RESET)
@@ -267,7 +271,7 @@ class AC_Interface(RealTimeGymInterface):
 
         self.speed = data["speed"]
 
-        speed, gear, rpm = self.normalize_telemetry(data)
+        speed, gear, rpm = self.normalize_telemetry(data)        
 
         rew, terminated = self.reward_function.compute_reward(data, self.action)
         self.ep_rew.append(rew)
@@ -277,8 +281,12 @@ class AC_Interface(RealTimeGymInterface):
         info = {}       
         rew = np.float32(rew)
 
-        if data["track_position"] > self.best and data["track_position"] < 0.995:
-            self.best = data["track_position"]
+        if self.reward_function.track_position > self.best[0] and self.go_to_pits:
+            self.best[0] = round(self.reward_function.track_position, 4)
+
+        elif self.reward_function.track_position > self.best[1] and not self.go_to_pits:
+            self.best[1] = round(self.reward_function.track_position, 4)
+        
 
         return obs, rew, terminated, info
 

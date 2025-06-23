@@ -19,6 +19,7 @@ D = 0x20
 CTRL = 0x1D
 N = 0x31
 Y = 0x15
+B = 0x30
 
 # C struct redefinitions
 PUL = ctypes.POINTER(ctypes.c_ulong)

@@ -87,7 +87,8 @@
     "SLEEP_TIME_AT_RESET": 1.5,
     "IMG_HIST_LEN": 5,
     "MAX_SPEED": 140,
-    "MIN_SPEED": 20,
+    "MIN_SPEED": 0,
+    "MULTI_START_POSITION": true,
     "RTGYM_CONFIG": {
       "time_step_duration": 0.05,
       "start_obs_capture": 0.04,

@@ -1,4 +1,4 @@
-from .game_control import PressKey, ReleaseKey, W, A, S, D, CTRL, N, Y
+from .game_control import PressKey, ReleaseKey, W, A, S, D, CTRL, N, Y, B
 import time
 
 # Tiempo de espera entre acciones de virar. Mayores tiempos provocan giros más pronunciados y viceversa.
@@ -25,6 +25,14 @@ def reset_race(sleep_time=2):
     ReleaseKey(CTRL)
 
     pass
+
+def go_to_pits():
+    # PRESIONAR CTRL + B PARA IR A LOS PITS
+    PressKey(CTRL)
+    PressKey(B)
+    time.sleep(0.1)  # Esperar un poco para asegurar que se presionen las teclas
+    ReleaseKey(B)
+    ReleaseKey(CTRL)
 
 # Definición de las decisiones posibles
 

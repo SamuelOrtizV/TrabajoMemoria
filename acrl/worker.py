@@ -37,6 +37,7 @@ import numpy as np
 import os
 import itertools
 import datetime
+import random
 from types import SimpleNamespace
 from torch.utils.tensorboard import SummaryWriter
 # Custom rollout worker para poder guardar los pesos de los mejores desempeños
@@ -70,6 +71,7 @@ class CustomRolloutWorker(RolloutWorker):
                             hist_len=self.img_hist_len,
                             act_len= self.act_buf_len,
                             stride=self.stride)
+        self.multi_start_position = cfg.ENV_CONFIG["MULTI_START_POSITION"]
 
     def get_last_step(self, log_dir, tag): #tal vez se puede sacar de la clase 
         from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
@@ -130,8 +132,14 @@ class CustomRolloutWorker(RolloutWorker):
             # Usa el método original de la clase base
             return super().act(obs, test=test)
 
+    def collect_train_episode(self, max_samples=None):
+        if self.multi_start_position:
+            self.env.env.env._RealTimeEnvTS__interface.go_to_pits = random.choice([True, False])
+        super().collect_train_episode(max_samples=max_samples)
+            
     def run_episode(self, max_samples=None, train=False):
         """
+        Metodo para episodios de prueba
         Sobrescribe el método para incluir la lógica de guardar pesos al romper el récord en episodios de test.
 
         Args:
@@ -140,13 +148,18 @@ class CustomRolloutWorker(RolloutWorker):
             train (bool): whether the episode is a training or a test episode.
                 `step` is called with `test=not train`.
         """
+        
+        if self.multi_start_position:
+            self.env.env.env._RealTimeEnvTS__interface.go_to_pits = True  # Esta super anidado...
+
         if max_samples is None:
             max_samples = self.max_samples_per_episode
 
         iterator = range(max_samples) if max_samples != np.inf else itertools.count()
 
         ret = 0.0
-        steps = 0
+        steps = 0       
+
         obs, info = self.reset(collect_samples=False)
         for _ in iterator:
             obs, rew, terminated, truncated, info = self.step(obs=obs, test=not train, collect_samples=False)
@@ -159,7 +172,7 @@ class CustomRolloutWorker(RolloutWorker):
         self.buffer.stat_test_steps = steps
 
         if hasattr(self, "tb_writer"):
-            if train:
+            if train: #TODO, este metodo se usa en test, pero no en train, por lo tanto hay que mover esto a collect_train_episode
                 self.tb_writer.add_scalar("train/episode_reward", ret, self.episode_counter_train)
                 self.tb_writer.add_scalar("train/episode_length", steps, self.episode_counter_train)
                 self.episode_counter_train += 1
