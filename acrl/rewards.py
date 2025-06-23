@@ -125,7 +125,10 @@ class RewardFunction:
         if self.start_position is None:
             self.start_position = og_track_position # we set the start position of the car
 
-        self.track_position = (og_track_position - self.start_position) % 1.0 # we normalize the track position to [0, 1]
+        if abs(self.start_position - og_track_position)> 0.0001:  #Avoids issues when the car goes a bit back at the start
+            self.track_position = round((og_track_position - self.start_position) % 1.0,5) # we normalize the track position to [0, 1]
+
+        #print(f"Track position: {self.track_position}, Start position: {self.start_position}, OG Track position: {og_track_position}")
 
         self.position_buffer.append(self.track_position)  # we add the current position to the buffer
         progress = self.position_buffer[-1] - self.position_buffer[0]
@@ -232,7 +235,7 @@ class RewardFunction:
             #self.previous_lap = telemetry_data["laps"]
             terminated = True
 
-        self.print_status(telemetry_data, action, collision)  # we print the status of the run
+        self.print_status(telemetry_data, action, collision, reward)  # we print the status of the run
 
         return reward, terminated
     
@@ -292,12 +295,10 @@ class RewardFunction:
         self.steering_buffer.clear()
         self.collision_buffer.clear()
 
-    def print_status(self, data, action, collision):
+    def print_status(self, data, action, collision, reward):
         """
         Prints the status of the run
-        """      
-        """ speed = data["speed"]
-        rpms = data["rpms"] """
+        """
 
-        print(f"{data} Collision: {collision} Gas-Brake Turn: {np.round(action, 2)}    ", end="\r")
+        print(f"Speed: {data['speed']:.2f}, RPMS: {data['rpms']:.2f}, Gear: {data['gear']}, Reward: {reward:.4f}, Track Position: {data['track_position']}, Progress: {self.track_position:.5f}, Damage: {np.round(max(data['car_damage']), 2)}, Collision: {collision} Gas-Brake Turn: {np.round(action, 2)}    ", end="\r")
         
