@@ -37,7 +37,6 @@ import numpy as np
 import os
 import itertools
 import datetime
-import random
 from types import SimpleNamespace
 from torch.utils.tensorboard import SummaryWriter
 # Custom rollout worker para poder guardar los pesos de los mejores desempeños
@@ -71,7 +70,6 @@ class CustomRolloutWorker(RolloutWorker):
                             hist_len=self.img_hist_len,
                             act_len= self.act_buf_len,
                             stride=self.stride)
-        self.multi_start_position = cfg.ENV_CONFIG["MULTI_START_POSITION"]
 
     def get_last_step(self, log_dir, tag): #tal vez se puede sacar de la clase 
         from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
@@ -133,8 +131,7 @@ class CustomRolloutWorker(RolloutWorker):
             return super().act(obs, test=test)
 
     def collect_train_episode(self, max_samples=None):
-        if self.multi_start_position:
-            self.env.env.env._RealTimeEnvTS__interface.go_to_pits = random.choice([True, False])
+        self.env.env.env._RealTimeEnvTS__interface.train_mode = True
         super().collect_train_episode(max_samples=max_samples)
             
     def run_episode(self, max_samples=None, train=False):
@@ -149,8 +146,7 @@ class CustomRolloutWorker(RolloutWorker):
                 `step` is called with `test=not train`.
         """
         
-        if self.multi_start_position:
-            self.env.env.env._RealTimeEnvTS__interface.go_to_pits = True  # Esta super anidado...
+        self.env.env.env._RealTimeEnvTS__interface.train_mode = train  # Esta super anidado...
 
         if max_samples is None:
             max_samples = self.max_samples_per_episode

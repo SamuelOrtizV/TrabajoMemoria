@@ -10,6 +10,7 @@ from util import ImageVisualizer
 # standard library imports
 import logging
 import time
+import random
 from collections import deque
 
 # third-party imports
@@ -63,8 +64,12 @@ class AC_Interface(RealTimeGymInterface):
         self.max_speed = cfg.ENV_CONFIG['MAX_SPEED'] # car stops accelerating if speed is above this limit
         self.min_speed = cfg.ENV_CONFIG['MIN_SPEED'] # car accelerates if speed is below this limit
         self.speed = 0.0
+        self.multi_start_position = cfg.ENV_CONFIG["MULTI_START_POSITION"]
         self.go_to_pits = False
+        self.train_mode = False
         self.best = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
+        self.avg_progress = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
+        self.progess_hist = deque(maxlen=100) #Guardar los ultimos 100 valores de progreso alcanzado
 
         # Crear el visualizador
         self.visualizer = ImageVisualizer()
@@ -201,10 +206,38 @@ class AC_Interface(RealTimeGymInterface):
             self.send_control(self.get_default_action())
             reset_race(cfg.SLEEP_TIME_AT_RESET)
             time.sleep(0.5)
-            print("Go to pits: ", self.go_to_pits)
-            if self.go_to_pits:
-                go_to_pits()
-                time.sleep(0.1)
+            if self.multi_start_position:
+                if self.train_mode:
+                    # Calcula los promedios de progreso
+                    vals_true = [x[0] for x in self.progess_hist if x[1] is True]
+                    vals_false = [x[0] for x in self.progess_hist if x[1] is False]
+
+                    self.avg_progress[0] = np.mean(vals_true) if vals_true else 0.0
+                    self.avg_progress[1] = np.mean(vals_false) if vals_false else 0.0
+
+                    # Inversa de los promedios (agrega un pequeño epsilon para evitar división por cero)
+                    epsilon = 1e-6
+                    inv_true = 1 / (self.avg_progress[0] + epsilon)
+                    inv_false = 1 / (self.avg_progress[1] + epsilon)
+
+                    # Normaliza para obtener probabilidades
+                    total = inv_true + inv_false
+                    prob_true = inv_true / total
+                    prob_false = inv_false / total
+
+                    # Decide el valor de go_to_pits usando la probabilidad inversa
+                    self.go_to_pits = random.choices([True, False], weights=[prob_true, prob_false])[0]
+
+                    print(f"Probabilidad Pits: {prob_true:.2f}, Probabilidad Hotlap: {prob_false:.2f}")
+                else:
+                    # En modo test, siempre va a pits
+                    self.go_to_pits = True
+
+                print(f"Pits: {self.go_to_pits}")
+                if self.go_to_pits:
+                    go_to_pits()
+                    time.sleep(0.1)
+
             self.controller.next_gear()
         else:
             reset_race(cfg.SLEEP_TIME_AT_RESET)
@@ -221,7 +254,7 @@ class AC_Interface(RealTimeGymInterface):
             min_reward = min(self.ep_rew)
             max_reward = max(self.ep_rew)
             avg_reward = total_reward / len(self.ep_rew)
-            print(f"PR: {self.best} Episode reward: {total_reward:.2f} Min reward: {min_reward:.2f} Max reward: {max_reward:.2f} Average reward: {avg_reward:.2f} \n")
+            print(f"PR: {self.best} AVG: {self.avg_progress} Episode reward: {total_reward:.2f} Min reward: {min_reward:.2f} Max reward: {max_reward:.2f} Average reward: {avg_reward:.2f} \n")
         else:
             print("No rewards recorded for the previous episode.\n")
 
@@ -281,6 +314,10 @@ class AC_Interface(RealTimeGymInterface):
         obs = [speed, gear, rpm, imgs]        
         info = {}       
         rew = np.float32(rew)
+
+        if terminated:
+            #Add track progress to the history
+            self.progess_hist.append((self.reward_function.track_position, self.go_to_pits))
 
         if self.reward_function.track_position > self.best[0] and self.go_to_pits:
             self.best[0] = round(self.reward_function.track_position, 4)

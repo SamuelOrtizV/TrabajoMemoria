@@ -126,7 +126,7 @@ class RewardFunction:
             self.start_position = og_track_position # we set the start position of the car
 
         if abs(self.start_position - og_track_position)> 0.0001:  #Avoids issues when the car goes a bit back at the start
-            self.track_position = round((og_track_position - self.start_position) % 1.0,5) # we normalize the track position to [0, 1]
+            self.track_position = round((og_track_position - self.start_position) % 1.0, 5) # we normalize the track position to [0, 1]
 
         #print(f"Track position: {self.track_position}, Start position: {self.start_position}, OG Track position: {og_track_position}")
 
@@ -300,5 +300,5 @@ class RewardFunction:
         Prints the status of the run
         """
 
-        print(f"Speed: {data['speed']:.2f}, RPMS: {data['rpms']:.2f}, Gear: {data['gear']}, Reward: {reward:.4f}, Track Position: {data['track_position']}, Progress: {self.track_position:.5f}, Damage: {np.round(max(data['car_damage']), 2)}, Collision: {collision} Gas-Brake Turn: {np.round(action, 2)}    ", end="\r")
+        print(f"Speed: {data['speed']:.2f}, RPMS: {data['rpms']:.2f}, Gear: {data['gear']}, Reward: {reward:.4f}, Track Position: {data['track_position']}, Progress: {self.track_position}, Damage: {np.round(max(data['car_damage']), 2)}, Collision: {collision}, Gas-Brake Turn: {np.round(action, 2)}    ", end="\r")
         
