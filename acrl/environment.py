@@ -209,16 +209,19 @@ class AC_Interface(RealTimeGymInterface):
             if self.multi_start_position:
                 if self.train_mode:
                     # Calcula los promedios de progreso
-                    vals_true = [x[0] for x in self.progess_hist if x[1] is True]
-                    vals_false = [x[0] for x in self.progess_hist if x[1] is False]
+                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Pits
+                    vals_false = [x[0] for x in self.progess_hist if x[1] is False] #Hotlap
 
-                    self.avg_progress[0] = np.mean(vals_true) if vals_true else 0.0
-                    self.avg_progress[1] = np.mean(vals_false) if vals_false else 0.0
+                    mean_true = np.mean(vals_true) if vals_true else 0.0
+                    mean_false = np.mean(vals_false) if vals_false else 0.0
+
+                    self.avg_progress[0] = round(float(mean_true), 4)
+                    self.avg_progress[1] = round(float(mean_false), 4)
 
                     # Inversa de los promedios (agrega un pequeño epsilon para evitar división por cero)
                     epsilon = 1e-6
-                    inv_true = 1 / (self.avg_progress[0] + epsilon)
-                    inv_false = 1 / (self.avg_progress[1] + epsilon)
+                    inv_true = 1 / (mean_true + epsilon)
+                    inv_false = 1 / (mean_false + epsilon)
 
                     # Normaliza para obtener probabilidades
                     total = inv_true + inv_false
