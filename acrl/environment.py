@@ -204,6 +204,7 @@ class AC_Interface(RealTimeGymInterface):
             print("Go to pits: ", self.go_to_pits)
             if self.go_to_pits:
                 go_to_pits()
+                time.sleep(0.5)
             self.controller.next_gear()
         else:
             reset_race(cfg.SLEEP_TIME_AT_RESET)

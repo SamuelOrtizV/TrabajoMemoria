@@ -284,6 +284,7 @@ class RewardFunction:
         self.start_position = None
         self.prev_pos = 0.0
         self.track_position = 0.0
+        self.lap_completed = False
 
         self.position_buffer.clear()
         self.position_buffer.extend([0.0] * self.position_buffer.maxlen)
