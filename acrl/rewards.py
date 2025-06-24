@@ -145,7 +145,7 @@ class RewardFunction:
         # Reward for completing a lap
         if self.lap_completed: #telemetry_data["laps"] > self.previous_lap:
             #reward += self.reward_laps_weight
-            #terminated = True
+            terminated = True
             #self.previous_lap = telemetry_data["laps"] 
             self.previous_checkpoint = 0.0
 
@@ -230,10 +230,10 @@ class RewardFunction:
         reward = np.clip(reward, -1.0, 1.0)  # Clip the reward to [-1, 1]
 
         # Reward for completing a lap
-        if self.lap_completed: #telemetry_data["laps"] > self.previous_lap:
+        if telemetry_data["laps"] > self.previous_lap:
             reward += self.reward_laps_weight
-            #self.previous_lap = telemetry_data["laps"]
-            terminated = True
+            self.previous_lap = telemetry_data["laps"]
+            #terminated = True
 
         self.print_status(telemetry_data, action, collision, reward)  # we print the status of the run
 
