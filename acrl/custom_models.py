@@ -342,7 +342,7 @@ class VanillaCNN(Module):
     
 class VanillaCNNBN(Module):
     def __init__(self, action_space_size):
-        super(VanillaCNN, self).__init__()
+        super(VanillaCNNBN, self).__init__()
         self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
         self.hist_len = cfg.IMG_HIST_LEN
         self.num_channels = 1 if cfg.GRAYSCALE else 3
