@@ -339,6 +339,47 @@ class VanillaCNN(Module):
         x_conv = x_conv.view(-1, flat_features)
 
         return x_conv
+    
+class VanillaCNNBN(Module):
+    def __init__(self, action_space_size):
+        super(VanillaCNN, self).__init__()
+        self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
+        self.hist_len = cfg.IMG_HIST_LEN
+        self.num_channels = 1 if cfg.GRAYSCALE else 3
+        self.action_space_size = action_space_size
+        self.act_buf_len = cfg.ACT_BUF_LEN
+
+        self.conv1 = Conv2d(self.hist_len * self.num_channels, 64, 8, stride=2)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.h_out, self.w_out = conv2d_out_dims(self.conv1, self.h_out, self.w_out)
+
+        self.conv2 = Conv2d(64, 64, 4, stride=2)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.h_out, self.w_out = conv2d_out_dims(self.conv2, self.h_out, self.w_out)
+
+        self.conv3 = Conv2d(64, 128, 4, stride=2)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.h_out, self.w_out = conv2d_out_dims(self.conv3, self.h_out, self.w_out)
+
+        self.conv4 = Conv2d(128, 128, 4, stride=2)
+        self.bn4 = nn.BatchNorm2d(128)
+        self.h_out, self.w_out = conv2d_out_dims(self.conv4, self.h_out, self.w_out)
+
+        self.out_channels = self.conv4.out_channels
+        self.flat_features = self.out_channels * self.h_out * self.w_out  
+
+    def forward(self, x):
+        x = x.float() / 255.0  # Normalizar imágenes
+
+        x_conv = F.relu(self.bn1(self.conv1(x)))
+        x_conv = F.relu(self.bn2(self.conv2(x_conv)))
+        x_conv = F.relu(self.bn3(self.conv3(x_conv)))
+        x_conv = F.relu(self.bn4(self.conv4(x_conv)))
+
+        flat_features = num_flat_features(x_conv)
+        x_conv = x_conv.view(-1, flat_features)
+
+        return x_conv
 
 class StackedChannelCNN(Module):
     def __init__(self, q_net, action_space_size):
@@ -360,7 +401,7 @@ class StackedChannelCNN(Module):
                 self.flat_features = cnn_out.shape[1]
         except Exception as e:
             print(f"[StackedChannelCNN] No se pudo usar PreTrainedCNN\n ({e})\n Usando VanillaCNN por defecto.")
-            self.cnn = VanillaCNN(action_space_size=action_space_size) #TODO ARREGLAR ESA CLASE PARA QUE SOLO SEA UNA CNN
+            self.cnn = VanillaCNNBN(action_space_size=action_space_size) #TODO ARREGLAR ESA CLASE PARA QUE SOLO SEA UNA CNN
             self.flat_features = self.cnn.flat_features
 
         # Calcular las características planas de salida
