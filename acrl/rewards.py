@@ -24,6 +24,7 @@ class RewardFunction:
                  threshold_checkpoint=0.01,
                  threshold_smooth_actions=0.1,
                  threshold_damage=25.0,
+                 max_speed=120.0,
                  hist_len=4,
                  time_step_duration=0.05,
                  buffer_lapse=0.5,
@@ -53,6 +54,7 @@ class RewardFunction:
             threshold_checkpoint (float): Threshold for track position to receive checkpoint reward.
             threshold_smooth_actions (float): Threshold for smooth actions.
             threshold_damage (float): Threshold for car damage to terminate the episode.
+            max_speed (float): Maximum speed allowed for the car.
             hist_len (int): Length of the history of images captured.
             time_step_duration (float): Duration of each time step in seconds.
             buffer_lapse (float): Duration of the collision detection buffer in seconds.
@@ -79,6 +81,7 @@ class RewardFunction:
         self.threshold_checkpoint = threshold_checkpoint
         self.threshold_smooth_actions = threshold_smooth_actions
         self.threshold_damage = threshold_damage
+        self.max_speed = max_speed
         self.position_buffer = deque([0.0] * hist_len, maxlen=hist_len)
         self.buffer_size = int(buffer_lapse / time_step_duration) 
         self.steering_buffer = deque(maxlen=self.buffer_size)
@@ -143,12 +146,12 @@ class RewardFunction:
         # ----------------------REWARDS---------------------------
 
         # Reward for completing a lap
-        if self.lap_completed: #telemetry_data["laps"] > self.previous_lap:
+        """ if self.lap_completed: #telemetry_data["laps"] > self.previous_lap:
             #reward += self.reward_laps_weight
             #terminated = True
             #self.previous_lap = telemetry_data["laps"] 
             self.previous_checkpoint = 0.0
-
+        """
         # Reward for reaching a checkpoint
         if checkpoint_difference > self.threshold_checkpoint and checkpoint_difference < 0.5:
             reward += self.reward_checkpoint
@@ -157,7 +160,7 @@ class RewardFunction:
 
         # Reward for progress on the track
         if progress > 0.0:  # If we did progress on the track
-            reward += self.reward_progress * min((telemetry_data["speed"])/(self.threshold_speed*3), 1) #Full reward only if above speed threshold
+            reward += self.reward_progress * min((telemetry_data["speed"])/(self.max_speed), 1) #Full reward only if driving at max speed allowed
 
         """ # Reward for speed
         if telemetry_data["speed"] > self.threshold_speed:
@@ -231,7 +234,7 @@ class RewardFunction:
 
         # Reward for completing a lap
         if self.lap_completed: #telemetry_data["laps"] > self.previous_lap:
-            print(f"Lap completed")  # Print the lap number
+            print(f"\n---Lap completed---\n")  # Print the lap number
             reward += self.reward_laps_weight
             self.previous_lap = telemetry_data["laps"]
             terminated = True

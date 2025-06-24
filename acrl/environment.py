@@ -65,7 +65,7 @@ class AC_Interface(RealTimeGymInterface):
         self.min_speed = cfg.ENV_CONFIG['MIN_SPEED'] # car accelerates if speed is below this limit
         self.speed = 0.0
         self.multi_start_position = cfg.ENV_CONFIG["MULTI_START_POSITION"]
-        self.go_to_pits = False
+        self.tp_car = False
         self.train_mode = False
         self.best = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
         self.avg_progress = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
@@ -118,6 +118,7 @@ class AC_Interface(RealTimeGymInterface):
                                                 threshold_checkpoint=cfg.REWARD_CONFIG['THRESHOLD_CHECKPOINT'],
                                                 threshold_smooth_actions=cfg.REWARD_CONFIG['THRESHOLD_SMOOTH_ACTIONS'],
                                                 threshold_damage=cfg.REWARD_CONFIG['THRESHOLD_DAMAGE'],
+                                                max_speed=self.max_speed,
                                                 hist_len=self.img_hist_len,
                                                 time_step_duration=cfg.ENV_CONFIG['RTGYM_CONFIG']['time_step_duration'],
                                                 mistake_collision=cfg.REWARD_CONFIG['MISTAKE_COLLISION'],
@@ -209,8 +210,8 @@ class AC_Interface(RealTimeGymInterface):
             if self.multi_start_position:
                 if self.train_mode:
                     # Calcula los promedios de progreso
-                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Pits
-                    vals_false = [x[0] for x in self.progess_hist if x[1] is False] #Hotlap
+                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Starting line
+                    vals_false = [x[0] for x in self.progess_hist if x[1] is False] #Middle of the track
 
                     mean_true = np.mean(vals_true) if vals_true else 0.0
                     mean_false = np.mean(vals_false) if vals_false else 0.0
@@ -228,16 +229,16 @@ class AC_Interface(RealTimeGymInterface):
                     prob_true = inv_true / total
                     prob_false = inv_false / total
 
-                    # Decide el valor de go_to_pits usando la probabilidad inversa
-                    self.go_to_pits = random.choices([True, False], weights=[prob_true, prob_false])[0]
+                    # Decide el valor de tp_car usando la probabilidad inversa
+                    self.tp_car = random.choices([True, False], weights=[prob_true, prob_false])[0]
 
-                    print(f"Probabilidad Pits: {prob_true:.2f}, Probabilidad Hotlap: {prob_false:.2f}")
+                    print(f"Probabilidad Startig line: {prob_true:.2f}, Probabilidad Media Pista: {prob_false:.2f}")
                 else:
-                    # En modo test, siempre va a pits
-                    self.go_to_pits = True
+                    # En modo test, siempre va a starting line
+                    self.tp_car = False
 
-                print(f"Pits: {self.go_to_pits}")
-                if self.go_to_pits:
+                print(f"Pits: {self.tp_car}")
+                if self.tp_car:
                     go_to_pits()
                     time.sleep(0.1)
 
@@ -320,12 +321,12 @@ class AC_Interface(RealTimeGymInterface):
 
         if terminated:
             #Add track progress to the history
-            self.progess_hist.append((self.reward_function.track_position, self.go_to_pits))
+            self.progess_hist.append((self.reward_function.track_position, self.tp_car))
 
-        if self.reward_function.track_position > self.best[0] and self.go_to_pits:
+        if self.reward_function.track_position > self.best[0] and self.tp_car:
             self.best[0] = round(self.reward_function.track_position, 4)
 
-        elif self.reward_function.track_position > self.best[1] and not self.go_to_pits:
+        elif self.reward_function.track_position > self.best[1] and not self.tp_car:
             self.best[1] = round(self.reward_function.track_position, 4)
         
 

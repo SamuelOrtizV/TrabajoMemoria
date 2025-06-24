@@ -89,7 +89,10 @@ class CustomRolloutWorker(RolloutWorker):
             if events:
                 print_with_timestamp(f"Last step for tag '{tag}': {events[-1].step + 1}")
                 return events[-1].step + 1  # Siguiente episodio
-        return 0
+            
+        episodes = input(f"Could not load last step for tag '{tag}'. Enter the number of episodes to start from: ")
+
+        return episodes if episodes.isdigit() else 0  # Si no es un número, empieza desde 0
     
     def init_best_test_reward(self):
           # --- Buscar archivos de pesos con "rec" en el nombre ---
@@ -133,6 +136,10 @@ class CustomRolloutWorker(RolloutWorker):
     def collect_train_episode(self, max_samples=None):
         self.env.env.env._RealTimeEnvTS__interface.train_mode = True
         super().collect_train_episode(max_samples=max_samples)
+        if hasattr(self, "tb_writer"):
+            self.tb_writer.add_scalar("train/episode_reward", self.buffer.stat_train_return, self.episode_counter_train)
+            self.tb_writer.add_scalar("train/episode_length",  self.buffer.stat_train_steps, self.episode_counter_train)
+            self.episode_counter_train += 1
             
     def run_episode(self, max_samples=None, train=False):
         """
@@ -168,14 +175,9 @@ class CustomRolloutWorker(RolloutWorker):
         self.buffer.stat_test_steps = steps
 
         if hasattr(self, "tb_writer"):
-            if train: #TODO, este metodo se usa en test, pero no en train, por lo tanto hay que mover esto a collect_train_episode
-                self.tb_writer.add_scalar("train/episode_reward", ret, self.episode_counter_train)
-                self.tb_writer.add_scalar("train/episode_length", steps, self.episode_counter_train)
-                self.episode_counter_train += 1
-            else:
-                self.tb_writer.add_scalar("test/episode_reward", ret, self.episode_counter_test)
-                self.tb_writer.add_scalar("test/episode_length", steps, self.episode_counter_test)
-                self.episode_counter_test += 1
+            self.tb_writer.add_scalar("test/episode_reward", ret, self.episode_counter_test)
+            self.tb_writer.add_scalar("test/episode_length", steps, self.episode_counter_test)
+            self.episode_counter_test += 1
 
         # Guardar los pesos del modelo si se rompe el récord de recompensa conseguida (solo en episodios de test)
         if not train and ret > self.best_test_reward and not self.standalone:
