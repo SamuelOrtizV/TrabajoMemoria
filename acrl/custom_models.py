@@ -323,26 +323,9 @@ class VanillaCNN(Module):
         self.conv4 = Conv2d(128, 128, 4, stride=2)
         self.h_out, self.w_out = conv2d_out_dims(self.conv4, self.h_out, self.w_out)
         self.out_channels = self.conv4.out_channels
-        self.flat_features = self.out_channels * self.h_out * self.w_out
-
-        """ self.mlp_input_features = self.flat_features + 3 + self.action_space_size*(self.act_buf_len+1) if self.q_net else self.flat_features + 3 + self.action_space_size*self.act_buf_len
-
-        self.mlp_layers = [256, 256, 1] if self.q_net else [256, 256]
-        self.mlp = mlp([self.mlp_input_features] + self.mlp_layers, nn.ReLU)
-    
-     def stack_hist_images(self, images):
-        # images: (batch, hist_len, H, W, C)
-        batch_size, hist_len, height, width, channels = images.shape
-        images = images.permute(0, 1, 4, 2, 3)  # (batch, hist_len, C, H, W)
-        images = images.reshape(batch_size, hist_len * channels, height, width)  # (batch, hist_len*C, H, W)
-        return images """   
+        self.flat_features = self.out_channels * self.h_out * self.w_out  
 
     def forward(self, x):
-
-        """ speed, gear, rpm, images, *acts = x
-        # Normalizar imágenes
-        images = images.float() / 255.0
-        images = self.stack_hist_images(images) """
 
         x = x.float() / 255.0  # Normalizar imágenes
 
@@ -355,16 +338,6 @@ class VanillaCNN(Module):
         #assert flat_features == self.flat_features, f"x.shape:{x_conv.shape}, flat_features:{flat_features}, self.out_channels:{self.out_channels}, self.h_out:{self.h_out}, self.w_out:{self.w_out}"
         x_conv = x_conv.view(-1, flat_features)
 
-        """ # Concatenar características adicionales
-        if self.q_net:
-            prev_acts = acts[:-1]
-            act = acts[-1]
-            x_cat = torch.cat((speed, gear, rpm, x_conv, *prev_acts, act), -1)
-        else:
-            prev_acts = acts
-            x_cat = torch.cat((speed, gear, rpm, x_conv, *prev_acts), -1)
-
-        x_cat = self.mlp(x_cat) """
         return x_conv
 
 class StackedChannelCNN(Module):
