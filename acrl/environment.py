@@ -210,29 +210,29 @@ class AC_Interface(RealTimeGymInterface):
             if self.multi_start_position:
                 if self.train_mode:
                     # Calcula los promedios de progreso
-                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Middle of the track
                     vals_false = [x[0] for x in self.progess_hist if x[1] is False] #Starting line
-
-                    mean_true = np.mean(vals_true) if vals_true else 0.0
+                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Middle of the track
+                    
                     mean_false = np.mean(vals_false) if vals_false else 0.0
+                    mean_true = np.mean(vals_true) if vals_true else 0.0                    
 
-                    self.avg_progress[0] = round(float(mean_true), 4)
-                    self.avg_progress[1] = round(float(mean_false), 4)
+                    self.avg_progress[0] = round(float(mean_false), 4)
+                    self.avg_progress[1] = round(float(mean_true), 4)
 
                     # Inversa de los promedios (agrega un pequeño epsilon para evitar división por cero)
                     epsilon = 1e-6
-                    inv_true = 1 / (mean_true + epsilon)
                     inv_false = 1 / (mean_false + epsilon)
+                    inv_true = 1 / (mean_true + epsilon)                    
 
                     # Normaliza para obtener probabilidades
                     total = inv_true + inv_false
-                    prob_true = inv_true / total
                     prob_false = inv_false / total
+                    prob_true = inv_true / total                    
 
                     # Decide el valor de tp_car usando la probabilidad inversa
                     self.tp_car = random.choices([True, False], weights=[prob_true, prob_false])[0]
 
-                    print(f"Probabilidad Startig line: {prob_true:.2f}, Probabilidad Media Pista: {prob_false:.2f}")
+                    print(f"Probabilidad Startig line: {prob_false:.2f}, Probabilidad Media Pista: {prob_true:.2f}")
                 else:
                     # En modo test, siempre va a starting line
                     self.tp_car = False
