@@ -210,8 +210,8 @@ class AC_Interface(RealTimeGymInterface):
             if self.multi_start_position:
                 if self.train_mode:
                     # Calcula los promedios de progreso
-                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Starting line
-                    vals_false = [x[0] for x in self.progess_hist if x[1] is False] #Middle of the track
+                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Middle of the track
+                    vals_false = [x[0] for x in self.progess_hist if x[1] is False] #Starting line
 
                     mean_true = np.mean(vals_true) if vals_true else 0.0
                     mean_false = np.mean(vals_false) if vals_false else 0.0
@@ -323,10 +323,10 @@ class AC_Interface(RealTimeGymInterface):
             #Add track progress to the history
             self.progess_hist.append((self.reward_function.track_position, self.tp_car))
 
-        if self.reward_function.track_position > self.best[0] and self.tp_car:
+        if self.reward_function.track_position > self.best[0] and not self.tp_car:
             self.best[0] = round(self.reward_function.track_position, 4)
 
-        elif self.reward_function.track_position > self.best[1] and not self.tp_car:
+        elif self.reward_function.track_position > self.best[1] and self.tp_car:
             self.best[1] = round(self.reward_function.track_position, 4)
         
 
