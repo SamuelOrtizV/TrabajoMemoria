@@ -67,7 +67,7 @@ memory_cls = partial(MemoryFull,
 
 # Model:
 
-model_cls = StackedChannelCNNActorCritic #CNNRNNActorCritic #
+model_cls =  CNNRNNActorCritic if cfg.TMRL_CONFIG["USE_RNN"] else StackedChannelCNNActorCritic
 
 # Training agent:
 

@@ -287,7 +287,7 @@ class CustomRolloutWorker(RolloutWorker):
 if cfg.TMRL_CONFIG["HUMAN_WORKER"]:
     actor_module_cls = HumanActor
 else:
-    actor_module_cls = StackedChannelCNNActor # CNNRNNActor #
+    actor_module_cls = CNNRNNActor if cfg.TMRL_CONFIG["USE_RNN"] else StackedChannelCNNActor
 
 # Instantiation of the RolloutWorker object:
 
