@@ -54,7 +54,7 @@ class CustomRolloutWorker(RolloutWorker):
         self.run_name = cfg.RUN_NAME
         self.best_test_reward = self.init_best_test_reward()  # Variable para rastrear el récord en pruebas
         self.weights = None
-        self.view_input = cfg.TMRL_CONFIG["VIEW_INPUT_TENSOR"] #TODO agregarlo al cfg
+        self.view_input = cfg.TMRL_CONFIG["VIEW_INPUT_TENSOR"] #TODO arreglar esto porque no se ve bien
         self.visualizer = ImageVisualizer(title="Input tensor visualization")
         log_dir = "runs/" + self.run_name
         train_tag = "train/episode_reward"
@@ -74,7 +74,7 @@ class CustomRolloutWorker(RolloutWorker):
     def get_last_step(self, log_dir, tag): #tal vez se puede sacar de la clase 
         from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-        if not os.path.exists(log_dir):
+        if not os.path.exists(log_dir) or self.standalone:
             return 0  # La carpeta no existe, así que no hay episodios previos
 
         event_files = [f for f in os.listdir(log_dir) if f.startswith("events.out.tfevents")]
@@ -89,10 +89,12 @@ class CustomRolloutWorker(RolloutWorker):
             if events:
                 print_with_timestamp(f"Last step for tag '{tag}': {events[-1].step + 1}")
                 return events[-1].step + 1  # Siguiente episodio
-            
-        episodes = input(f"Could not load last step for tag '{tag}'. Enter the number of episodes to start from: ")
-
-        return episodes if episodes.isdigit() else 0  # Si no es un número, empieza desde 0
+        #FIXME: A veces no se encuentra el tag, entonces hay que pedir el número de episodios al usuario
+        episodes_str = input(f"Could not load last step for tag '{tag}'. Enter the number of episodes to start from: ")
+        if episodes_str.isdigit():
+            return int(episodes_str)
+        else:
+            return 0  # Si no es un número, empieza desde 0
     
     def init_best_test_reward(self):
           # --- Buscar archivos de pesos con "rec" en el nombre ---
@@ -115,7 +117,7 @@ class CustomRolloutWorker(RolloutWorker):
         return 0.0
                     
     def act(self, obs, test=False):
-        if self.stride > 1:            
+        if self.stride >= 1: #FIXME: Parece no funcionar bien con stride > 1         
             self.infer_memory.append(obs)
 
             if len(self.infer_memory) > self.img_hist_len * self.stride:
@@ -126,17 +128,20 @@ class CustomRolloutWorker(RolloutWorker):
 
                 if self.view_input:
                     self.view_input_tensor(obs_for_model)
-            else:
+            else:                
                 action = self.actor.act_(obs, test=test)
             return action
         else:
+            print_with_timestamp("Stride must be >= 1. Using stride=1 instead.")#delete
+            if self.view_input:
+                    self.view_input_tensor(obs)
             # Usa el método original de la clase base
             return super().act(obs, test=test)
 
     def collect_train_episode(self, max_samples=None):
         self.env.env.env._RealTimeEnvTS__interface.train_mode = True
         super().collect_train_episode(max_samples=max_samples)
-        if hasattr(self, "tb_writer"):
+        if hasattr(self, "tb_writer") and not self.standalone:
             self.tb_writer.add_scalar("train/episode_reward", self.buffer.stat_train_return, self.episode_counter_train)
             self.tb_writer.add_scalar("train/episode_length",  self.buffer.stat_train_steps, self.episode_counter_train)
             self.episode_counter_train += 1
@@ -174,7 +179,7 @@ class CustomRolloutWorker(RolloutWorker):
         self.buffer.stat_test_return = ret
         self.buffer.stat_test_steps = steps
 
-        if hasattr(self, "tb_writer"):
+        if hasattr(self, "tb_writer") and not self.standalone:
             self.tb_writer.add_scalar("test/episode_reward", ret, self.episode_counter_test)
             self.tb_writer.add_scalar("test/episode_length", steps, self.episode_counter_test)
             self.episode_counter_test += 1
