@@ -121,6 +121,7 @@ class RewardFunction:
         reward = 0.0
         self.step_counter += 1  # step counter to enable mistake counter
         mistake = False  # flag to check if a mistake happened
+        self.steering_buffer.append(action[1])  # Agrega la dirección al buffer de dirección
         collision = self.collision_detection(telemetry_data, action)
 
         og_track_position = telemetry_data["track_position"]        
@@ -168,12 +169,12 @@ class RewardFunction:
 
         # ----------------------PENALTIES---------------------------
 
-        """ # Penalty for non-smooth actions
+        """ # Penalty for non-smooth actions #TODO: implementar algo que compare la ultima accion con el buffer de giros
         if self.last_action is not None:
-            gas_brake_diff = abs(action[0] - self.last_action[0])
+            #gas_brake_diff = abs(action[0] - self.last_action[0])
             wheel_diff = abs(action[1] - self.last_action[1])
 
-            if gas_brake_diff > self.threshold_smooth_actions or wheel_diff > self.threshold_smooth_actions:
+            if wheel_diff > self.threshold_smooth_actions:
                 reward += self.penalty_non_smooth_actions
             
         self.last_action = action  # we update the last action taken by the car """
@@ -248,8 +249,6 @@ class RewardFunction:
         Detects if the car is in a collision state
         """
         acc_x = telemetry_data["acc_x"]
-
-        self.steering_buffer.append(action[1])  # Agrega la dirección al buffer de dirección
 
         avg_steering = sum(self.steering_buffer) / len(self.steering_buffer)
 
