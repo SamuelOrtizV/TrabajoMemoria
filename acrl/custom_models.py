@@ -341,13 +341,13 @@ class VanillaCNN(Module):
         return x_conv
     
 class VanillaCNNBN(Module):
-    def __init__(self, action_space_size):
+    def __init__(self, h_out = cfg.IMG_HEIGHT, w_out = cfg.IMG_WIDTH, hist_len=cfg.IMG_HIST_LEN,
+                  num_channels=1 if cfg.GRAYSCALE else 3, act_buf_len = cfg.ACT_BUF_LEN):
         super(VanillaCNNBN, self).__init__()
-        self.h_out, self.w_out = cfg.IMG_HEIGHT, cfg.IMG_WIDTH
-        self.hist_len = cfg.IMG_HIST_LEN
-        self.num_channels = 1 if cfg.GRAYSCALE else 3
-        self.action_space_size = action_space_size
-        self.act_buf_len = cfg.ACT_BUF_LEN
+        self.h_out, self.w_out = h_out, w_out
+        self.hist_len = hist_len
+        self.num_channels = num_channels
+        self.act_buf_len = act_buf_len
 
         self.conv1 = Conv2d(self.hist_len * self.num_channels, 64, 8, stride=2)
         self.bn1 = nn.BatchNorm2d(64)
@@ -401,7 +401,7 @@ class StackedChannelCNN(Module):
                 self.flat_features = cnn_out.shape[1]
         except Exception as e:
             print(f"[StackedChannelCNN] No se pudo usar PreTrainedCNN\n ({e})\n Usando VanillaCNN por defecto.")
-            self.cnn = VanillaCNNBN(action_space_size=action_space_size) #TODO ARREGLAR ESA CLASE PARA QUE SOLO SEA UNA CNN
+            self.cnn = VanillaCNNBN()
             self.flat_features = self.cnn.flat_features
 
         # Calcular las características planas de salida
@@ -589,55 +589,35 @@ class PreTrainedCNN(Module):
         try:
             module = import_module("torchvision.models")
             imagenet_cnn_cls = getattr(module, cnn_name)
+            # Si se piden pesos preentrenados, solo se permite para imágenes RGB
+            if pretrained:
+                assert self.num_channels == 3 and not cfg.GRAYSCALE, "Los pesos preentrenados solo están disponibles para imágenes RGB (3 canales)."
+            # Instancia la CNN
+            self.cnn = imagenet_cnn_cls(weights="DEFAULT" if pretrained else None)
+            if not replace_first_conv(self.cnn, self.num_channels):
+                raise RuntimeError("No se pudo reemplazar la primera capa Conv2d para aceptar más canales.")
+
+            # Quita la última capa (classifier/fc) para obtener solo features
+            if hasattr(self.cnn, 'classifier'):
+                self.cnn_features = nn.Sequential(*(list(self.cnn.children())[:-1]))
+            elif hasattr(self.cnn, 'fc'):
+                self.cnn_features = nn.Sequential(*(list(self.cnn.children())[:-1]))
+            else:
+                raise ValueError("No se reconoce la arquitectura de la CNN pasada.")
+            self.normalize = True
+            print(f"[PreTrainedCNN] Usando {cnn_name} con {self.num_channels} canales de entrada y salida de características ({self.h_out}, {self.w_out})")
         except Exception as e:
-            raise ImportError(f"No se pudo importar la clase CNN '{cnn_name}': {e}, intenta usar un modelo de torchvision.models como 'resnet18', 'vgg16', etc.")
-        
-        # Si se piden pesos preentrenados, solo se permite para imágenes RGB
-        if pretrained:
-            assert self.num_channels == 3 and not cfg.GRAYSCALE, "Los pesos preentrenados solo están disponibles para imágenes RGB (3 canales)."
-
-        # Instancia la CNN
-        self.cnn = imagenet_cnn_cls(weights="DEFAULT" if pretrained else None)
-
-        """ # Modifica la primera capa para aceptar self.num_channels
-        first_conv = None
-        for name, module in self.cnn.named_modules():
-            if isinstance(module, nn.Conv2d):
-                first_conv = module
-                break
-        assert first_conv is not None, "No se encontró una capa Conv2d en la CNN seleccionada."
-
-        if first_conv.in_channels != self.num_channels:
-            # Crea una nueva capa con los canales correctos (sin copiar pesos)
-            new_conv = nn.Conv2d(
-                in_channels=self.num_channels,
-                out_channels=first_conv.out_channels,
-                kernel_size=first_conv.kernel_size,
-                stride=first_conv.stride,
-                padding=first_conv.padding,
-                bias=first_conv.bias is not None
-            )
-            # Reemplaza la capa en el modelo
-            for name, module in self.cnn.named_children():
-                if isinstance(module, nn.Conv2d):
-                    setattr(self.cnn, name, new_conv)
-                    break """
-
-        if not replace_first_conv(self.cnn, self.num_channels):
-            raise RuntimeError("No se pudo reemplazar la primera capa Conv2d para aceptar más canales.")
-
-        # Quita la última capa (classifier/fc) para obtener solo features
-        if hasattr(self.cnn, 'classifier'):
-            self.cnn_features = nn.Sequential(*(list(self.cnn.children())[:-1]))
-        elif hasattr(self.cnn, 'fc'):
-            self.cnn_features = nn.Sequential(*(list(self.cnn.children())[:-1]))
-        else:
-            raise ValueError("No se reconoce la arquitectura de la CNN pasada.")
-        
-        print(f"[PreTrainedCNN] Usando {cnn_name} con {self.num_channels} canales de entrada y salida de características ({self.h_out}, {self.w_out})")
+            print(f"[PreTrainedCNN] No se pudo usar la CNN preentrenada '{cnn_name}': {e}\nUsando VanillaCNNBN por defecto.")
+            # Forzar hist_len=1 para compatibilidad con RNN
+            self.cnn_features = VanillaCNNBN(hist_len=1)
+            self.normalize = False
 
     def forward(self, images):
         images = images.float() / 255.0  # Espera (batch, C, H, W)
+        if self.normalize and self.num_channels == 3:
+            mean = torch.tensor([0.485, 0.456, 0.406], device=images.device).view(1, 3, 1, 1)
+            std = torch.tensor([0.229, 0.224, 0.225], device=images.device).view(1, 3, 1, 1)
+            images = (images - mean) / std
         cnn_out = self.cnn_features(images)
         # Si la CNN devuelve (batch, features, 1, 1), aplana
         if cnn_out.ndim == 4:
