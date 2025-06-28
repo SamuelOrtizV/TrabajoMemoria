@@ -614,7 +614,7 @@ class PreTrainedCNN(Module):
 
     def forward(self, images):
         images = images.float() / 255.0  # Espera (batch, C, H, W)
-        if self.normalize and self.num_channels == 3:
+        if self.normalize and self.num_channels == 3: #TODO: PROBAR
             mean = torch.tensor([0.485, 0.456, 0.406], device=images.device).view(1, 3, 1, 1)
             std = torch.tensor([0.229, 0.224, 0.225], device=images.device).view(1, 3, 1, 1)
             images = (images - mean) / std

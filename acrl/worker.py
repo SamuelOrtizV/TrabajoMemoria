@@ -117,7 +117,7 @@ class CustomRolloutWorker(RolloutWorker):
         return 0.0
                     
     def act(self, obs, test=False):
-        if self.stride >= 1: #FIXME: Parece no funcionar bien con stride > 1         
+        if self.stride > 1: #FIXME: Parece no funcionar bien con stride > 3        
             self.infer_memory.append(obs)
 
             if len(self.infer_memory) > self.img_hist_len * self.stride:
