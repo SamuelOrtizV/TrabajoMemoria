@@ -161,7 +161,8 @@ class RewardFunction:
 
         # Reward for progress on the track
         if progress > 0.0:  # If we did progress on the track
-            reward += self.reward_progress * min((telemetry_data["speed"])/(self.max_speed), 1) #Full reward only if driving at max speed allowed
+            epislon = 0.0001  # Small value to avoid division by zero
+            reward += self.reward_progress * min((telemetry_data["speed"])/(self.max_speed+epislon), 1) #Full reward only if driving at max speed allowed
 
         """ # Reward for speed
         if telemetry_data["speed"] > self.threshold_speed:

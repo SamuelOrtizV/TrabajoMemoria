@@ -235,7 +235,7 @@ class CustomRolloutWorker(RolloutWorker):
                 print_with_timestamp("model weights have been updated")
         return nb_received
 
-    def view_input_tensor(self, x):
+    def view_input_tensor(self, x, print_data = False):
         """
         Visualiza la información pasada al agente usando Tkinter.
         Las imágenes históricas se concatenan horizontalmente (más antigua a la izquierda).
@@ -263,7 +263,8 @@ class CustomRolloutWorker(RolloutWorker):
         # Armar string para el título
         acts_str = ", ".join([f"Prev Act{j+1}: {val}" for j, val in enumerate(acts_vals)])
         title_str = f"Speed: {s_val:.0f}, Gear: {g_val:.0f}, RPM: {r_val:.0f}, {acts_str}"
-        #print(title_str)
+        if print_data:
+            print(title_str)
 
         # Extraer imágenes
         img_tensor = images  # shape: (num_imgs, H, W, C)
