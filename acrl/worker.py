@@ -132,7 +132,6 @@ class CustomRolloutWorker(RolloutWorker):
                 action = self.actor.act_(obs, test=test)
             return action
         else:
-            print_with_timestamp("Stride must be >= 1. Using stride=1 instead.")#delete
             if self.view_input:
                     self.view_input_tensor(obs)
             # Usa el método original de la clase base
