@@ -399,8 +399,8 @@ class StackedChannelCNN(Module):
                 dummy = torch.zeros(1, self.num_channels*self.hist_len, self.h_out, self.w_out)
                 cnn_out = self.cnn(dummy)
                 self.flat_features = cnn_out.shape[1]
-        except Exception as e:
-            print(f"[StackedChannelCNN] No se pudo usar PreTrainedCNN\n ({e})\n Usando VanillaCNN por defecto.")
+        except Exception as e: #TODO: AGREGAR PARAMETRO EN CFG PARA USAR O NO UNA CNN PREENTRENADA
+            print(f"[StackedChannelCNN] Usando VanillaCNN por defecto.")
             self.cnn = VanillaCNNBN()
             self.flat_features = self.cnn.flat_features
 

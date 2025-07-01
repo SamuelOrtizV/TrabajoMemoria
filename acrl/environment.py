@@ -69,7 +69,7 @@ class AC_Interface(RealTimeGymInterface):
         self.train_mode = False
         self.best = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
         self.avg_progress = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
-        self.progess_hist = deque(maxlen=100) #Guardar los ultimos 100 valores de progreso alcanzado
+        self.progess_hist = deque(maxlen=50) #Guardar los ultimos 50 valores de progreso alcanzado
 
         # Crear el visualizador
         self.visualizer = ImageVisualizer()
@@ -324,10 +324,10 @@ class AC_Interface(RealTimeGymInterface):
             self.progess_hist.append((self.reward_function.track_position, self.tp_car))
 
         if self.reward_function.track_position > self.best[0] and not self.tp_car:
-            self.best[0] = round(self.reward_function.track_position, 4)
+            self.best[0] = round(self.reward_function.track_position, 3)
 
         elif self.reward_function.track_position > self.best[1] and self.tp_car:
-            self.best[1] = round(self.reward_function.track_position, 4)
+            self.best[1] = round(self.reward_function.track_position, 3)
         
 
         return obs, rew, terminated, info

@@ -140,9 +140,13 @@ class CustomRolloutWorker(RolloutWorker):
     def collect_train_episode(self, max_samples=None):
         self.env.env.env._RealTimeEnvTS__interface.train_mode = True
         super().collect_train_episode(max_samples=max_samples)
+
+        print(f"Training episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}\n")
+        
         if hasattr(self, "tb_writer") and not self.standalone:
             self.tb_writer.add_scalar("train/episode_reward", self.buffer.stat_train_return, self.episode_counter_train)
             self.tb_writer.add_scalar("train/episode_length",  self.buffer.stat_train_steps, self.episode_counter_train)
+            self.tb_writer.add_scalar("train/episode_progress", round(self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position,3), self.episode_counter_train)
             self.episode_counter_train += 1
             
     def run_episode(self, max_samples=None, train=False):
@@ -178,9 +182,12 @@ class CustomRolloutWorker(RolloutWorker):
         self.buffer.stat_test_return = ret
         self.buffer.stat_test_steps = steps
 
+        print(f"Test episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}")
+
         if hasattr(self, "tb_writer") and not self.standalone:
             self.tb_writer.add_scalar("test/episode_reward", ret, self.episode_counter_test)
             self.tb_writer.add_scalar("test/episode_length", steps, self.episode_counter_test)
+            self.tb_writer.add_scalar("test/episode_progress", round(self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position,3), self.episode_counter_test)
             self.episode_counter_test += 1
 
         # Guardar los pesos del modelo si se rompe el récord de recompensa conseguida (solo en episodios de test)
