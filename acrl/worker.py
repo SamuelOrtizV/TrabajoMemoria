@@ -141,7 +141,7 @@ class CustomRolloutWorker(RolloutWorker):
         self.env.env.env._RealTimeEnvTS__interface.train_mode = True
         super().collect_train_episode(max_samples=max_samples)
 
-        print(f"Training episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}\n")
+        #print(f"\nTraining episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}\n")
         
         if hasattr(self, "tb_writer") and not self.standalone:
             self.tb_writer.add_scalar("train/episode_reward", self.buffer.stat_train_return, self.episode_counter_train)
@@ -182,7 +182,7 @@ class CustomRolloutWorker(RolloutWorker):
         self.buffer.stat_test_return = ret
         self.buffer.stat_test_steps = steps
 
-        print(f"Test episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}")
+        #print(f"\nTest episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}")
 
         if hasattr(self, "tb_writer") and not self.standalone:
             self.tb_writer.add_scalar("test/episode_reward", ret, self.episode_counter_test)
@@ -316,4 +316,4 @@ if __name__ == "__main__":
         # In standalone mode, the worker will not connect to a server.
         my_worker.run_episodes(max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE)
     else:
-        my_worker.run(test_episode_interval=10, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
+        my_worker.run(test_episode_interval=1, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.

@@ -239,6 +239,7 @@ class RewardFunction:
             print(f"\n---Lap completed---\n")  # Print the lap number
             reward += self.reward_laps_weight
             self.previous_lap = telemetry_data["laps"]
+            self.track_position = 1.0
             terminated = True
 
         self.print_status(telemetry_data, action, collision, reward)  # we print the status of the run
