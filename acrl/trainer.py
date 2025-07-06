@@ -6,13 +6,11 @@ from tmrl.envs import GenericGymEnv
 import tmrl.config.config_constants as cfg
 from tmrl.config.config_objects import CONFIG_DICT
 from tmrl.training_offline import TorchTrainingOffline
-from custom_algorithms import SAC_Agent
+from custom_algorithms import SAC_Agent, REDQSAC_Agent
 
 from environment import AC_Interface
 from memories import MemoryFull
-from custom_models import StackedChannelCNNActorCritic, CNNRNNActorCritic
-
-from tmrl.custom.custom_algorithms import REDQSACAgent
+from custom_models import StackedChannelCNNActorCritic, CNNRNNActorCritic, StackedChannelCNNActorCriticREDQ
 
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
@@ -73,6 +71,8 @@ model_cls =  CNNRNNActorCritic if cfg.TMRL_CONFIG["USE_RNN"] else StackedChannel
 
 ALG_CONFIG = cfg.TMRL_CONFIG["ALG"]
 
+#ALG_CONFIG["ALGORITHM"] = "REDQSAC" #TODO CAMBIAR EL CFG OBJECT YA QUE DA ERROR FUERA DE SAC
+
 if ALG_CONFIG["ALGORITHM"] == "SAC":
     training_agent_cls = partial(
             SAC_Agent,
@@ -94,11 +94,13 @@ if ALG_CONFIG["ALGORITHM"] == "SAC":
             l2_actor=ALG_CONFIG["L2_ACTOR"] if "L2_ACTOR" in ALG_CONFIG else None,
             l2_critic=ALG_CONFIG["L2_CRITIC"] if "L2_CRITIC" in ALG_CONFIG else None
         )
-""" elif ALG_CONFIG["ALGORITHM"] == "REDQSAC": #TODO: Este algoritmio requiere cambios en el modelo
+elif ALG_CONFIG["ALGORITHM"] == "REDQSAC":
+    model_cls = StackedChannelCNNActorCriticREDQ
     training_agent_cls = partial(
-        REDQSACAgent,
+        REDQSAC_Agent,
         device='cuda' if cfg.CUDA_TRAINING else 'cpu',
         model_cls=model_cls,
+        mixed_precision=ALG_CONFIG["MIXED_PRECISION"],
         lr_actor=ALG_CONFIG["LR_ACTOR"],
         lr_critic=ALG_CONFIG["LR_CRITIC"],
         lr_entropy=ALG_CONFIG["LR_ENTROPY"],
@@ -110,7 +112,9 @@ if ALG_CONFIG["ALGORITHM"] == "SAC":
         n=ALG_CONFIG["REDQ_N"],  # number of Q networks
         m=ALG_CONFIG["REDQ_M"],  # number of Q targets
         q_updates_per_policy_update=ALG_CONFIG["REDQ_Q_UPDATES_PER_POLICY_UPDATE"]
-    ) """
+    )
+
+print(f"Using {ALG_CONFIG["ALGORITHM"]} algorithm")
 
 # Implementar aqui otros algoritmos de entrenamiento si es necesario
 

@@ -1,7 +1,9 @@
 import torch
 import logging
+import numpy as np
+import itertools
 from dataclasses import dataclass
-from tmrl.custom.custom_algorithms import SpinupSacAgent
+from tmrl.custom.custom_algorithms import SpinupSacAgent, REDQSACAgent
 from tmrl.config import config_constants as cfg
 
 @dataclass(eq=0)
@@ -217,5 +219,117 @@ class SAC_Agent(SpinupSacAgent):
 
         """ if amp_enabled:
             ret_dict["mixed_precision"] = True """
+
+        return ret_dict
+    
+
+# REDQ-SAC =============================================================================================================
+
+@dataclass(eq=0)
+class REDQSAC_Agent(REDQSACAgent):
+    mixed_precision: bool = False
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.mixed_precision:
+            self.scaler = torch.amp.GradScaler()
+            logging.info(f"Mixed precision training enabled for REDQ-SAC")
+        # Un solo optimizador para todos los críticos
+
+        all_q_params = itertools.chain(*[q.parameters() for q in self.model.qs])
+        self.q_optimizer = torch.optim.Adam(all_q_params, lr=self.lr_critic)
+        # Asegura que self.alpha_t siempre esté definido
+        if not self.learn_entropy_coef:
+            self.alpha_t = torch.tensor(float(self.alpha)).to(self.device)
+        else:
+            self.alpha_t = torch.exp(self.log_alpha.detach())
+
+    def train(self, batch):
+        self.i_update += 1
+        update_policy = (self.i_update % self.q_updates_per_policy_update == 0)
+
+        o, a, r, o2, d, _ = batch
+        amp_enabled = self.mixed_precision and torch.cuda.is_available()
+
+        if update_policy:
+            with torch.amp.autocast("cuda", enabled=amp_enabled):
+                pi, logp_pi = self.model.actor(o)
+        # FIXME? log_prob = log_prob.reshape(-1, 1)
+
+        loss_alpha = None
+        if self.learn_entropy_coef and update_policy:
+            alpha_t = torch.exp(self.log_alpha.detach())
+            loss_alpha = -(self.log_alpha * (logp_pi + self.target_entropy).detach()).mean()
+            self.alpha_t = alpha_t
+        else:
+            alpha_t = self.alpha_t
+
+        if loss_alpha is not None:
+            self.alpha_optimizer.zero_grad()
+            if amp_enabled:
+                self.scaler.scale(loss_alpha).backward()
+                self.scaler.step(self.alpha_optimizer)
+            else:
+                loss_alpha.backward()
+                self.alpha_optimizer.step()
+
+        with torch.no_grad():
+            a2, logp_a2 = self.model.actor(o2)
+            sample_idxs = np.random.choice(self.n, self.m, replace=False)
+            q_prediction_next_list = [self.model_target.qs[i](o2, a2) for i in sample_idxs]
+            q_prediction_next_cat = torch.stack(q_prediction_next_list, -1)
+            min_q, _ = torch.min(q_prediction_next_cat, dim=1, keepdim=True)
+            backup = r.unsqueeze(dim=-1) + self.gamma * (1 - d.unsqueeze(dim=-1)) * (min_q - alpha_t * logp_a2.unsqueeze(dim=-1))
+
+        q_prediction_list = [q(o, a) for q in self.model.qs]
+        q_prediction_cat = torch.stack(q_prediction_list, -1)
+        backup = backup.expand((-1, self.n)) if backup.shape[1] == 1 else backup
+
+        with torch.amp.autocast("cuda", enabled=amp_enabled):
+            loss_q = self.criterion(q_prediction_cat, backup)
+
+        self.q_optimizer.zero_grad()
+        if amp_enabled:
+            self.scaler.scale(loss_q).backward()
+            self.scaler.step(self.q_optimizer)
+            self.scaler.update()
+        else:
+            loss_q.backward()
+            self.q_optimizer.step()
+
+        if update_policy:
+            for q in self.model.qs:
+                q.requires_grad_(False)
+            with torch.amp.autocast("cuda", enabled=amp_enabled):
+                qs_pi = [q(o, pi) for q in self.model.qs]
+                qs_pi_cat = torch.stack(qs_pi, -1)
+                ave_q = torch.mean(qs_pi_cat, dim=1, keepdim=True)
+                loss_pi = (alpha_t * logp_pi.unsqueeze(dim=-1) - ave_q).mean()
+            self.pi_optimizer.zero_grad()
+            if amp_enabled:
+                self.scaler.scale(loss_pi).backward()
+                self.scaler.step(self.pi_optimizer)
+                self.scaler.update()
+            else:
+                loss_pi.backward()
+                self.pi_optimizer.step()
+            for q in self.model.qs:
+                q.requires_grad_(True)
+
+        with torch.no_grad():
+            for p, p_targ in zip(self.model.parameters(), self.model_target.parameters()):
+                p_targ.data.mul_(self.polyak)
+                p_targ.data.add_((1 - self.polyak) * p.data)
+
+        if update_policy:
+            self.loss_pi = loss_pi.detach()
+        ret_dict = dict(
+            loss_actor=self.loss_pi.detach().item(),
+            loss_critic=loss_q.detach().item(),
+        )
+
+        if self.learn_entropy_coef and update_policy:
+            ret_dict["loss_entropy_coef"] = loss_alpha.detach().item()
+            ret_dict["entropy_coef"] = alpha_t.item()
 
         return ret_dict
