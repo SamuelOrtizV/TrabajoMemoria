@@ -368,3 +368,7 @@ class MemoryInference:
                     *actions)
 
         return last_obs
+
+    def clear(self):
+        """Vacía la memoria de inferencia."""
+        self.buffer.clear()

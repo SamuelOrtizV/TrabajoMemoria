@@ -141,6 +141,8 @@ class CustomRolloutWorker(RolloutWorker):
         self.env.env.env._RealTimeEnvTS__interface.train_mode = True
         super().collect_train_episode(max_samples=max_samples)
 
+        self.infer_memory.clear()
+
         #print(f"\nTraining episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}\n")
         
         if hasattr(self, "tb_writer") and not self.standalone:
@@ -181,6 +183,8 @@ class CustomRolloutWorker(RolloutWorker):
 
         self.buffer.stat_test_return = ret
         self.buffer.stat_test_steps = steps
+
+        self.infer_memory.clear()
 
         #print(f"\nTest episode progress: {self.env.env.env._RealTimeEnvTS__interface.reward_function.track_position:.3}")
 
