@@ -320,4 +320,4 @@ if __name__ == "__main__":
         # In standalone mode, the worker will not connect to a server.
         my_worker.run_episodes(max_samples_per_episode=cfg.RW_MAX_SAMPLES_PER_EPISODE)
     else:
-        my_worker.run(test_episode_interval=1, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
+        my_worker.run(test_episode_interval=10, verbose=True, expert=cfg.TMRL_CONFIG["HUMAN_WORKER"]) # This will make the worker collect samples and send them to the server.
