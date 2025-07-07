@@ -190,16 +190,15 @@ class MemoryFull(MemoryEnv):
             else:
                 item -= 1
 
+        # Conversion de item (primer indice si stride = 1) a indices de los ultimos elementos
         idx_last = item + self.min_samples - 1
         idx_now = item + self.min_samples
 
-        acts = self.load_acts(item)
-        last_act_buf = acts[:-1]
-        new_act_buf = acts[1:]
-
-        imgs = self.load_imgs(idx_now)
-        imgs_last_obs = imgs[:-1]
-        imgs_new_obs = imgs[1:]
+        # Cargar imágenes y acciones para last_obs y new_obs por separado
+        imgs_last_obs = self.load_imgs(idx_last)
+        imgs_new_obs = self.load_imgs(idx_now)
+        acts_last_obs = self.load_acts(idx_last)
+        acts_new_obs = self.load_acts(idx_now)
 
         # Calcula los índices usados para imgs_last_obs y imgs_new_obs
         all_indices = list(range(idx_now - self.imgs_obs * self.img_stride, idx_now + 1))
@@ -224,10 +223,10 @@ class MemoryFull(MemoryEnv):
                 new_item = random.randint(0, self.__len__() - 1)
                 return self.get_transition(new_item)
 
-        last_obs = (self.data[2][idx_last], self.data[7][idx_last], self.data[8][idx_last], imgs_last_obs, *last_act_buf)
+        last_obs = (self.data[2][idx_last], self.data[7][idx_last], self.data[8][idx_last], imgs_last_obs, *acts_last_obs)
         new_act = self.data[1][idx_now]
         rew = np.float32(self.data[5][idx_now])
-        new_obs = (self.data[2][idx_now], self.data[7][idx_now], self.data[8][idx_now], imgs_new_obs, *new_act_buf)
+        new_obs = (self.data[2][idx_now], self.data[7][idx_now], self.data[8][idx_now], imgs_new_obs, *acts_new_obs)
         terminated = self.data[9][idx_now]
         truncated = self.data[10][idx_now]
         info = self.data[6][idx_now]
@@ -236,13 +235,22 @@ class MemoryFull(MemoryEnv):
 
     def load_imgs(self, idx_final):
         #res = self.data[3][(item + self.start_imgs_offset):(item + self.start_imgs_offset + self.imgs_obs + 1)]
-        indices = [idx_final - i * self.img_stride for i in reversed(range(self.imgs_obs + 1))]
+        indices = [idx_final - i * self.img_stride for i in reversed(range(self.imgs_obs))]
         res = [self.data[3][idx] for idx in indices]
         return np.stack(res)
 
-    def load_acts(self, item):
-        res = self.data[1][(item + self.start_acts_offset):(item + self.start_acts_offset + self.act_buf_len + 1)]
-        return res
+    def load_acts(self, idx_final):
+        acts = []
+        for i in reversed(range(self.act_buf_len)):
+            idx = idx_final - i * self.img_stride
+            if self.img_stride == 1:
+                acts.append(self.data[1][idx])
+            else:
+                start = idx - self.img_stride + 1 if idx - self.img_stride + 1 >= 0 else 0
+                idxs = [j for j in range(start, idx + 1)]
+                vals = [self.data[1][j] for j in idxs]
+                acts.append(np.mean(vals, axis=0) if vals else self.data[1][idx])
+        return acts
 
     def append_buffer(self, buffer):
         """
@@ -332,17 +340,26 @@ class MemoryInference:
     
     def get_transition(self):
         """Obtiene la transición actual para la inferencia."""
-        
         last_idx = len(self.buffer) - 1
 
         imgs_indices = [last_idx - i * self.stride for i in reversed(range(self.hist_len))]
-        acts_indices = [last_idx - i for i in reversed(range(self.act_len))]
-        #TODO: AGREGAR STRIDE A ACTS Y PROMEDIAR LOS VALORES INTERMEDIOS, AQUI Y EN MEMORYFULL
+        #acts_indices = [last_idx - i for i in reversed(range(self.act_len))]
+        acts_indices = [last_idx - i * self.stride for i in reversed(range(self.act_len))]
 
         imgs = [self.buffer[idx][3] for idx in imgs_indices]
         imgs = np.stack(imgs)
 
-        actions = [self.buffer[idx][4] for idx in acts_indices]
+        # Acciones: promediamos los valores intermedios entre cada stride
+        actions = []
+
+        for idx in acts_indices:
+            if self.stride == 1:
+                actions.append(self.buffer[idx][4])
+            else:
+                start = idx - self.stride + 1 if idx - self.stride + 1 >= 0 else 0
+                idxs = [i for i in range(start, idx + 1)]
+                acts = [self.buffer[i][4] for i in idxs]
+                actions.append(np.mean(acts, axis=0) if acts else self.buffer[idx][4])
 
         last_obs = (self.buffer[last_idx][0],
                     self.buffer[last_idx][1],

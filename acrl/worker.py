@@ -66,7 +66,7 @@ class CustomRolloutWorker(RolloutWorker):
         self.img_hist_len = cfg.IMG_HIST_LEN
         self.act_buf_len = cfg.ACT_BUF_LEN
         self.infer_memory = MemoryInference(
-                            capacity= self.img_hist_len* self.stride*2,
+                            capacity= (self.img_hist_len + 1) * self.stride * 2,
                             hist_len=self.img_hist_len,
                             act_len= self.act_buf_len,
                             stride=self.stride)
@@ -117,10 +117,10 @@ class CustomRolloutWorker(RolloutWorker):
         return 0.0
                     
     def act(self, obs, test=False):
-        if self.stride > 1: #FIXME: Parece no funcionar bien con stride > 3        
+        if self.stride > 1: #FIXME: Parece no funcionar bien con stride > 3 para 20hz    
             self.infer_memory.append(obs)
 
-            if len(self.infer_memory) > self.img_hist_len * self.stride:
+            if len(self.infer_memory) > (self.img_hist_len + 1) * self.stride:
                 
                 obs_for_model = self.infer_memory.get_transition()
 
