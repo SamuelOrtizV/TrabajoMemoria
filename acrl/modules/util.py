@@ -1,39 +1,38 @@
 import tkinter as tk  
 from PIL import Image, ImageTk
 
+
 class ImageVisualizer:
-    def __init__(self, title="Visualización en tiempo real", position="top-right"):
-        """
-        Inicializa el visualizador de imágenes con Tkinter.
+    def __init__(self, title="Real-time visualization", position="top-right"):
+        """Initialize the Tkinter image viewer window.
 
         Args:
-            title (str): Título de la ventana.
-            position (str): Posición de la ventana en la pantalla ("top-right", "top-left", etc.).
+            title: window title
+            position: window position on the screen ("top-right", "top-left", etc.)
         """
         self.root = tk.Tk()
         self.root.title(title)
 
-        # Configurar la posición de la ventana
+        # Set window position
         self.set_window_position(position)
 
-        # Crear un widget de etiqueta para mostrar la imagen
+        # Label widget to display the image
         self.label = tk.Label(self.root)
         self.label.pack()
 
     def set_window_position(self, position):
-        """
-        Configura la posición de la ventana en la pantalla.
+        """Set the window position on screen.
 
         Args:
-            position (str): Posición de la ventana ("top-right", "top-left", etc.).
+            position: one of "top-right", "top-left", "bottom-right", "bottom-left", or center by default
         """
-        # Obtener el tamaño de la pantalla
+        # Screen size
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
 
-        # Calcular la posición
+        # Position calculation
         if position == "top-right":
-            x_offset = screen_width - 300  # Dejar un margen pequeño
+            x_offset = screen_width - 300  # small side margin
             y_offset = 0
         elif position == "top-left":
             x_offset = 0
@@ -44,39 +43,36 @@ class ImageVisualizer:
         elif position == "bottom-left":
             x_offset = 0
             y_offset = screen_height - 300
-        else:  # Centro por defecto
+        else:  # default center
             x_offset = screen_width // 2
             y_offset = screen_height // 2
 
-        # Configurar la geometría de la ventana (sin ajustar dimensiones manualmente)
+        # Apply geometry
         self.root.geometry(f"+{x_offset}+{y_offset}")
 
     def update_image(self, img):
-        """
-        Actualiza la imagen mostrada en la ventana.
+        """Update the image displayed in the window.
 
         Args:
-            img: La imagen a mostrar (numpy array).
+            img: numpy array image to display (grayscale or RGB)
         """
-        # Convertir la imagen a un formato compatible con Tkinter
-        if len(img.shape) == 2:  # Escala de grises
+        # Convert to Tk-compatible image
+        if len(img.shape) == 2:  # grayscale
             img = Image.fromarray(img)
-        else:  # Color RGB
+        else:  # RGB
             img = Image.fromarray(img, 'RGB')
 
-        # Convertir la imagen a un objeto PhotoImage
+        # To PhotoImage
         img_tk = ImageTk.PhotoImage(img)
 
-        # Actualizar la imagen en el widget de etiqueta
+        # Update label content
         self.label.config(image=img_tk)
         self.label.image = img_tk
 
-        # Actualizar la ventana
+        # Refresh window
         self.root.update_idletasks()
         self.root.update()
 
     def close(self):
-        """
-        Cierra la ventana de visualización.
-        """
+        """Close the visualization window."""
         self.root.destroy()

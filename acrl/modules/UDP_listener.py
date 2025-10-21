@@ -1,42 +1,35 @@
+"""Simple UDP listener for receiving Assetto Corsa telemetry.
+
+Parses a text payload of comma-separated key:value pairs and returns a
+dictionary with typed values used by the environment and reward code.
+"""
+
 import socket
 import time
 
+
 def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
-    """
-    Escucha mensajes UDP y devuelve las variables obtenidas.
+    """Listen for a single UDP message and parse telemetry values.
 
     Args:
-        udp_ip (str): Dirección IP para escuchar.
-        udp_port (int): Puerto UDP para escuchar.
-
-        timeout (float): Tiempo de espera en segundos para recibir datos.
+        udp_ip: IP address to bind
+        udp_port: UDP port to bind
 
     Returns:
-        variables (dict): Diccionario con las variables obtenidas.
-            
-                - speed (float): Velocidad del vehículo.
-                - rpms (float): Revoluciones por minuto del motor.
-                - gear (int): Marcha actual del vehículo.
-                - laps (int): Número de vueltas completadas.
-                - track_position (float): Posición en la pista.
-                - tyres_out (int): Número de ruedas fuera de la pista.
-                - car_damage (float): Daño del vehículo.
-                - acc_x (float): Aceleración en el eje X. Negativo giro a la derecha, positivo giro a la izquierda.
-                - transmitting (bool): Indica si se están transmitiendo datos.
-        
+        dict with keys: speed, rpms, gear, laps, track_position, tyres_out,
+        car_damage (list of 4 floats), acc_x, transmitting (bool)
     """
-    timeout=0.5
+    timeout = 0.5
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((udp_ip, udp_port))
-    sock.settimeout(timeout)  # Configurar el tiempo de espera
+    sock.settimeout(timeout)
 
     try:
-        #print("1", end='\r')
-        data, addr = sock.recvfrom(1024)  # Tamaño del buffer
+        data, addr = sock.recvfrom(1024)
         message = data.decode()
 
-        # Separar los datos en variables individuales
+        # Split key:value pairs
         parts = message.split(", ")
         speed = float(parts[0].split(": ")[1])
         rpms = float(parts[1].split(": ")[1])
@@ -44,19 +37,17 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
         laps = int(parts[3].split(": ")[1])
         track_position = float(parts[4].split(": ")[1])
         tyres_out = int(parts[5].split(": ")[1])
-        #car_damage = float(parts[6].split(": ")[1])
         car_damage_str = parts[6].split(": ")[1]
         car_damage = [float(d) for d in car_damage_str.split("_")]
         acc_x = float(parts[7].split(": ")[1])
-        
-        # Redondear los valores a 2 decimales
+
+        # Rounding for stability/readability
         speed = round(speed, 2)
         rpms = round(rpms, 2)
         track_position = round(track_position, 5)
         car_damage = [round(d, 4) for d in car_damage]
         acc_x = round(acc_x, 2)
-        
-        # Almacenar los valores en un diccionario
+
         variables = {
             "speed": speed,
             "rpms": rpms,
@@ -66,11 +57,11 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "tyres_out": tyres_out,
             "car_damage": car_damage,
             "acc_x": acc_x,
-            "transmitting": True
+            "transmitting": True,
         }
     except socket.timeout:
         time.sleep(0.1)
-        # Valores por defecto si no se reciben datos
+        # Defaults if no data
         variables = {
             "speed": 0.0,
             "rpms": 0,
@@ -80,15 +71,14 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "tyres_out": 0,
             "car_damage": [0.0, 0.0, 0.0, 0.0],
             "acc_x": 0.0,
-            "transmitting": False
+            "transmitting": False,
         }
     except KeyboardInterrupt:
-        #print("3")
         raise KeyboardInterrupt
     except Exception as e:
         print(f"{e}")
 
-        # Valores por defecto en caso de error
+        # Defaults on error
         variables = {
             "speed": 0.0,
             "rpms": 0,
@@ -100,16 +90,15 @@ def udp_listener(udp_ip="127.0.0.1", udp_port=5005):
             "acc_x": 0.0,
             "transmitting": False
         }
-        
-    # Devolver el diccionario con las variables
+
     return variables
 
-# Ejemplo de uso
+
 if __name__ == "__main__":
-    print("Escuchando mensajes UDP...\n")
+    print("Listening for UDP messages...\n")
     try:
         while True:
             variables = udp_listener()
-            print(variables, "               ", end='\r')
+            print(variables, "               ", end="\r")
     except KeyboardInterrupt:
-        print("\n\nSaliendo...")
+        print("\n\nExiting...")

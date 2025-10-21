@@ -1,110 +1,116 @@
+"""Keyboard control helpers for the game (WASD + combos).
+
+This module exposes simple functions to emulate common movement inputs
+using DirectInput scan codes via PressKey/ReleaseKey.
+
+Controls mapping:
+- 0: none
+- 1: A
+- 2: D
+- 3: W
+- 4: S
+- 5: A+W
+- 6: A+S
+- 7: D+W
+- 8: D+S
+"""
+
 from .game_control import PressKey, ReleaseKey, W, A, S, D, CTRL, N, Y, B
 import time
 
-# Tiempo de espera entre acciones de virar. Mayores tiempos provocan giros más pronunciados y viceversa.
-SLEEP_TIME = 0.09 # Debe ser menor que 1/FPS
+# Delay between turning actions. Larger values produce longer/stronger turns.
+# Must be < 1/FPS.
+SLEEP_TIME = 0.09
 
-def reset_race(sleep_time=2):
-    """Reinicia la simulación (puedes personalizar este método según el juego)"""
-    # Lógica para reiniciar el entorno
 
-    # PRESIONAR CTRL + N PARA REINICIAR EL ENTORNO
+def reset_race(sleep_time: float = 2.0) -> None:
+    """Reset the race session using hotkeys (CTRL+N, then CTRL+Y).
+
+    The timings here are conservative to ensure the game registers the keypresses.
+    """
+    # Press CTRL + N to reset the session
     PressKey(CTRL)
     PressKey(N)
-    time.sleep(0.1)  # Esperar un poco para asegurar que se presionen las teclas
+    time.sleep(0.1)
     ReleaseKey(N)
     ReleaseKey(CTRL)
 
-    time.sleep(sleep_time)  # Esperar a que el entorno se reinicie
+    time.sleep(sleep_time)  # Wait for the environment to reset
 
-    # PRESIONAR CTRL + Y PARA INICIAR LA CARRERA
+    # Press CTRL + Y to start the race
     PressKey(CTRL)
     PressKey(Y)
-    time.sleep(0.1)  # Esperar un poco para asegurar que se presionen las teclas
+    time.sleep(0.1)
     ReleaseKey(Y)
     ReleaseKey(CTRL)
 
-    pass
 
-def go_to_pits():
-    # PRESIONAR CTRL + B PARA IR A LOS PITS
+def go_to_pits() -> None:
+    """Send the car to pits using hotkey (CTRL+B)."""
     PressKey(CTRL)
     PressKey(B)
-    time.sleep(0.1)  # Esperar un poco para asegurar que se presionen las teclas
+    time.sleep(0.1)
     ReleaseKey(B)
     ReleaseKey(CTRL)
 
-# Definición de las decisiones posibles
 
-# 0 = NONE
-def none():
-    """
-    No se presiona ninguna tecla.
-    """
-    #ReleaseKey(W)
+# Action primitives ---------------------------------------------------------------------
+
+def none() -> None:
+    """Release all steering/brake keys (no action)."""
     ReleaseKey(A)
     ReleaseKey(S)
     ReleaseKey(D)
-# 1 = A
-def move_left():
-    """
-    Se presiona la tecla 'A'.
-    """
+
+
+def move_left() -> None:
+    """Press 'A' briefly to steer left."""
     PressKey(A)
-    #ReleaseKey(W)
     ReleaseKey(S)
     ReleaseKey(D)
     time.sleep(SLEEP_TIME)
     ReleaseKey(A)
-# 2 = D
-def move_right():
-    """
-    Se presiona la tecla 'D'.
-    """
+
+
+def move_right() -> None:
+    """Press 'D' briefly to steer right."""
     PressKey(D)
-    #ReleaseKey(W)
     ReleaseKey(S)
     ReleaseKey(A)
     time.sleep(SLEEP_TIME)
     ReleaseKey(D)
-# 3 = W
-def move_forward():
-    """
-    Se presiona la tecla 'W'.
-    """
+
+
+def move_forward() -> None:
+    """Hold 'W' to accelerate forward (release other keys)."""
     PressKey(W)
     ReleaseKey(A)
     ReleaseKey(S)
     ReleaseKey(D)
-    #ReleaseKey(W)
-# 4 = S
-def move_back():
-    """
-    Se presiona la tecla 'S'.
-    """
+
+
+def move_back() -> None:
+    """Press 'S' briefly to brake/reverse."""
     PressKey(S)
     ReleaseKey(W)
     ReleaseKey(A)
     ReleaseKey(D)
     time.sleep(SLEEP_TIME)
     ReleaseKey(S)
-# 5 = AW
-def move_left_forward():
-    """
-    Se presionan las teclas 'A' y 'W'.
-    """
+
+
+def move_left_forward() -> None:
+    """Press 'A' + 'W' briefly (left + forward)."""
     PressKey(A)
     PressKey(W)
     ReleaseKey(S)
     ReleaseKey(D)
     time.sleep(SLEEP_TIME)
     ReleaseKey(A)
-    #ReleaseKey(W)
-# 6 = AS
-def move_left_back():
-    """
-    Se presionan las teclas 'A' y 'S'.
-    """
+
+
+def move_left_back() -> None:
+    """Press 'A' + 'S' briefly (left + back)."""
     PressKey(A)
     PressKey(S)
     ReleaseKey(W)
@@ -112,23 +118,20 @@ def move_left_back():
     time.sleep(SLEEP_TIME)
     ReleaseKey(A)
     ReleaseKey(S)
-# 7 = DW
-def move_right_forward():
-    """
-    Se presionan las teclas 'D' y 'W'.
-    """
+
+
+def move_right_forward() -> None:
+    """Press 'D' + 'W' briefly (right + forward)."""
     PressKey(D)
     PressKey(W)
     ReleaseKey(S)
     ReleaseKey(A)
     time.sleep(SLEEP_TIME)
     ReleaseKey(D)
-    #ReleaseKey(W)
-# 8 = DS
-def move_right_back():
-    """
-    Se presionan las teclas 'D' y 'S'.
-    """
+
+
+def move_right_back() -> None:
+    """Press 'D' + 'S' briefly (right + back)."""
     PressKey(D)
     PressKey(S)
     ReleaseKey(W)
@@ -137,11 +140,12 @@ def move_right_back():
     ReleaseKey(D)
     ReleaseKey(S)
 
-def move(direction: int):
-    """
-    Mueve el vehículo en la dirección especificada.
 
-    :param int direction: La dirección en la que se moverá el vehículo.
+def move(direction: int) -> None:
+    """Execute a discrete movement action by id (0..8).
+
+    :param direction: action id (see module docstring mapping).
+    :raises ValueError: if id is not between 0 and 8.
     """
     if direction == 0:
         none()
@@ -156,10 +160,10 @@ def move(direction: int):
     elif direction == 5:
         move_left_forward()
     elif direction == 6:
-        move_left_back()        
+        move_left_back()
     elif direction == 7:
-        move_right_forward()        
+        move_right_forward()
     elif direction == 8:
         move_right_back()
     else:
-        raise ValueError("La dirección debe estar entre 0 y 8")
+        raise ValueError("direction must be between 0 and 8")

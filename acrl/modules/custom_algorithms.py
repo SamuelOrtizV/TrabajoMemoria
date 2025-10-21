@@ -1,3 +1,10 @@
+"""
+Custom algorithms for SAC and REDQ with optional PyTorch AMP support.
+
+This module adds mixed-precision (AMP) and minor training tweaks on top of
+the agent interfaces used by this project.
+"""
+
 import torch
 import logging
 import numpy as np
@@ -17,7 +24,7 @@ class SAC_Agent(SpinupSacAgent):
             logging.info(f"Mixed precision training enabled")
     
     def train(self, batch):
-
+        """Train step with optional mixed precision for SAC agent."""
         o, a, r, o2, d, _ = batch # Observations, actions, rewards, next observations, done flags, and info dicts
 
         # Flag to track if we're using mixed precision
@@ -80,7 +87,7 @@ class SAC_Agent(SpinupSacAgent):
             self.q_optimizer.step()
 
         # Freeze Q-networks so you don't waste computational effort
-        # computing gradients for them during the policy learning step.
+    # computing gradients for them during the policy learning step.
         self.model.q1.requires_grad_(False)
         self.model.q2.requires_grad_(False)
 
@@ -245,6 +252,7 @@ class REDQSAC_Agent(REDQSACAgent):
             self.alpha_t = torch.exp(self.log_alpha.detach())
 
     def train(self, batch):
+        """Train step with optional mixed precision for REDQ-SAC agent."""
         self.i_update += 1
         update_policy = (self.i_update % self.q_updates_per_policy_update == 0)
 

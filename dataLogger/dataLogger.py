@@ -19,15 +19,13 @@ import socket
 from ctypes import *
 from sim_info import *
 
-# Configuración del socket
-UDP_IP = "127.0.0.1"  # Dirección IP del servidor receptor
-UDP_PORT = 5005       # Puerto del servidor receptor
+# UDP socket configuration (receiver is assumed to be local)
+UDP_IP = "127.0.0.1"
+UDP_PORT = 5005
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Reunir datos de la simulación
-# Se necesita: Cantidad de vueltas completadas, posición normalizada de la pista, cantidad de ruedas fuera de la pista, daño del auto, velocidad
-
-# Crear indicadores de velocidad, vueltas, posición en la pista, ruedas fuera de la pista y daño del auto
+# Collect simulation data from shared memory.
+# Indicators below are kept for potential on-screen display (currently hidden).
 
 appWindow = 0
 carSpeed = 0
@@ -127,10 +125,10 @@ def acMain(ac_version):
     ac.drawBorder(appWindow, 1)
     ac.setBackgroundOpacity(appWindow, 0)
 
-    # Ocultar el logo de la aplicación
+    # Hide the app logo
     ac.setIconPosition(appWindow, -10000, -10000)
 
-    # Datos de la simulación
+    # Simulation data labels (currently disabled)
     """ carSpeed = SpeedIndicator(appWindow, 20, 40, "Speed:")
     lapCount = LapIndicator(appWindow, 20, 80, "Laps:")
     trackPosition = TrackPositionIndicator(appWindow, 20, 120, "Track Position:")
@@ -146,35 +144,35 @@ def acMain(ac_version):
 def onFormRender(deltaT):
     global carSpeed, rpms, gear, lapCount, trackPosition, tyresOut, carDamage
 
-    # Obtener la velocidad en km/h
+    # Speed in km/h
     velocidad = ac.getCarState(0, acsys.CS.SpeedKMH)
     #carSpeed.setCurrentValue(velocidad)
 
-    # Obtener la aceleración del auto en Gs
-    acc_x = info.physics.accG[0] # Aceleración en el eje izquierda - derecha del auto
-    acc_y = info.physics.accG[1] # Aceleración en el eje arriba - abajo del auto
-    acc_z = info.physics.accG[2] # Aceleración en el eje adelante - atrás del auto
+    # Car acceleration in Gs (x: left-right, y: up-down, z: forward-back)
+    acc_x = info.physics.accG[0]
+    acc_y = info.physics.accG[1]
+    acc_z = info.physics.accG[2]
 
-    # Obtener las revoluciones por minuto
+    # RPMs
     rpms = ac.getCarState(0, acsys.CS.RPM)
 
-    # Obtener la marcha actual
+    # Current gear
     gear = info.physics.gear
     #gear.setCurrentValue(gear)
 
-    # Obtener el número de vueltas completadas
+    # Laps completed
     vueltas = ac.getCarState(0, acsys.CS.LapCount)
     #lapCount.setCurrentValue(vueltas)
 
-    # Obtener la posición normalizada en la pista
+    # Normalized position on track
     posicion = ac.getCarState(0, acsys.CS.NormalizedSplinePosition)
     #trackPosition.setTrackPositionValue(posicion)
 
-    # Obtener la cantidad de ruedas fuera de la pista
+    # Number of tyres out of track
     ruedas_fuera = info.physics.numberOfTyresOut
     #tyresOut.setTyresOutValue(ruedas_fuera)
 
-    # Obtener el daño del auto    
+    # Car damage (vector of 4 values); take the max for display/logging
     if hasattr(info.physics, 'carDamage'):
         damage = info.physics.carDamage        
         try:
@@ -182,13 +180,13 @@ def onFormRender(deltaT):
             damage = "{}_{}_{}_{}".format(damage[0], damage[1], damage[2], damage[3])
             pass
         except Exception as e:
-            ac.log("Error al obtener el daño del auto: {}".format(e))
+            ac.log("Error while reading car damage: {}".format(e))
             #damage = [0,0,0,0]
 
-    # Crear el mensaje con los datos
+    # Build the UDP payload (simple text for ease of parsing)
     message = "Speed: {}, RPMs: {}, Gear: {}, Laps: {}, Track Position: {}, Tyres Out: {}, Car Damage: {}, Acc X: {}".format(
         velocidad, rpms, gear, vueltas, posicion, ruedas_fuera, damage, acc_x
     )
 
-    # Enviar el mensaje a través del socket
+    # Send over UDP
     sock.sendto(message.encode(), (UDP_IP, UDP_PORT))

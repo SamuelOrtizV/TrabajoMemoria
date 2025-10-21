@@ -33,33 +33,33 @@ class RewardFunction:
                  mistake_collision=False,
                  mistale_out_of_track=False                             
                  ):
-        """
-        Instantiates a reward function for AC
+        """Instantiate reward function for AC with configurable weights and thresholds.
 
         Args:
-            reward_data_path: path where the trajectory file is stored
-            max_mistakes: after this number of steps with no reward, episode is terminated
-            steps_to_forget: number of steps to forget the previous mistakes
-            min_nb_steps_before_failure: the episode must have at least this number of steps before failure
-            reward_checkpoint (float): Weight for reaching a checkpoint.
-            reward_progress (float): Weight for progress on the track.
-            reward_laps_weight (float): Weight for completing a lap.
-            penalty_no_progress (float): Penalty for making no progress.
-            penalty_backwards (float): Penalty for moving backwards.
-            penalty_tyres_out (float): Penalty for going off track.
-            penalty_car_damage (float): Penalty for car damage.
-            penalty_collision (float): Penalty for continuous collision.
-            threshold_speed (float): Minimum speed to receive speed reward.
-            threshold_rpms (float): Minimum RPMs to avoid low RPM penalty.
-            threshold_checkpoint (float): Threshold for track position to receive checkpoint reward.
-            threshold_smooth_actions (float): Threshold for smooth actions.
-            threshold_damage (float): Threshold for car damage to terminate the episode.
-            max_speed (float): Maximum speed allowed for the car.
-            hist_len (int): Length of the history of images captured.
-            time_step_duration (float): Duration of each time step in seconds.
-            buffer_lapse (float): Duration of the collision detection buffer in seconds.
-            direction_threshold (float): Threshold for steering direction detection.
-            acc_x_threshold (float): Threshold for lateral acceleration detection in gs.
+            max_mistakes: after this number of steps with mistakes, episode terminates
+            steps_to_forget: steps without mistakes before resetting counters
+            min_nb_steps_before_failure: minimum steps before allowing termination
+            reward_checkpoint: reward for passing checkpoints
+            reward_progress: reward weight for forward progress
+            reward_laps_weight: reward for completing a lap
+            penalty_no_progress: penalty for no progress
+            penalty_low_speed: penalty below speed threshold
+            penalty_backwards: penalty for negative progress
+            penalty_tyres_out: penalty for wheels off track
+            penalty_car_damage: penalty for increased damage
+            penalty_collision: penalty when collision detected
+            penalty_non_smooth_actions: penalty for jerky steering (disabled in code)
+            threshold_speed: speed threshold for speed-related reward/penalty
+            threshold_rpms: RPM threshold to avoid low-RPM penalty (unused)
+            threshold_checkpoint: delta threshold to count a new checkpoint
+            threshold_smooth_actions: steering delta considered jerky
+            threshold_damage: immediate termination when damage exceeds this
+            max_speed: speed cap used in some reward calculations
+            hist_len: history length for position buffer
+            time_step_duration: duration of each environment step (seconds)
+            buffer_lapse: time window for collision detection buffers (seconds)
+            direction_threshold: steering threshold for lock/understeer detection
+            acc_x_threshold: lateral acceleration threshold for lock detection
         """
 
       
@@ -108,13 +108,13 @@ class RewardFunction:
         self.last_action = None  # last action taken by the car
 
     def compute_reward(self, telemetry_data, action):
-        """
-        Computes the current reward given the position pos
+        """Compute reward and termination from telemetry and action.
+
         Args:
-            telemetry_data: Dictionary with the telemetry data of the car
-            action: the action taken by the car (throttle-brake, steering)
+            telemetry_data: dict containing the required keys
+            action: array-like [throttle_brake, steering]
         Returns:
-            float, bool: the reward and the terminated signal
+            (reward: float, terminated: bool)
         """
 
         terminated = False        
@@ -254,9 +254,10 @@ class RewardFunction:
 
         avg_steering = sum(self.steering_buffer) / len(self.steering_buffer)
 
-        # Evalúa el bloqueo lateral usando los promedios
-        # Si se gira a la derecha y no hay aceleración lateral, o si se gira a la izquierda y no hay aceleración lateral, 
-        # o si hay acelareción lateral y no hay giro en ese sentido, se considera que hay bloqueo lateral
+    # Lateral lock detection using averages:
+    # - turning right but no leftward acceleration
+    # - turning left but no rightward acceleration
+    # - lateral acceleration without steering in that direction
         bloqueo_lateral = (avg_steering > self.direction_threshold and not (acc_x < -self.acc_x_threshold)) or \
                           (avg_steering < -self.direction_threshold and not (acc_x > self.acc_x_threshold)) or \
                           (acc_x > self.acc_x_threshold and avg_steering > -0.05) or \
@@ -266,7 +267,7 @@ class RewardFunction:
 
         avg_collision = sum(self.collision_buffer) / len(self.collision_buffer)
 
-        # Si el auto no esta quieto y la muchos de los frames del buffer son de bloqueo lateral, se considera que hay colisión
+    # If the car is moving and most frames indicate lateral lock, consider collision
         if telemetry_data["speed"] > 1 and avg_collision > 0.5:
             collision = True
         else:
@@ -275,9 +276,7 @@ class RewardFunction:
         return collision
 
     def reset(self):
-        """
-        Resets the reward function for a new episode.
-        """
+        """Reset internal state for a new episode."""
         
         self.step_counter = 0
         self.mistake_counter = 0
@@ -301,9 +300,7 @@ class RewardFunction:
         self.collision_buffer.clear()
 
     def print_status(self, data, action, collision, reward):
-        """
-        Prints the status of the run
-        """
+        """Print the current status (debug only)."""
 
         print(f"Speed: {data['speed']:.2f}, RPMS: {data['rpms']:.2f}, Gear: {data['gear']}, Reward: {reward:.4f}, Track Position: {data['track_position']}, Progress: {self.track_position}, Damage: {np.round(max(data['car_damage']), 2)}, Collision: {collision}, Gas-Brake Turn: {np.round(action, 2)}    ", end="\r")
         

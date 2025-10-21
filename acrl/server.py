@@ -10,13 +10,13 @@ import tmrl.config.config_constants as cfg
 # The TMRL Server is the central point of communication between TMRL entities.
 # The Trainer and the RolloutWorkers connect to the Server.
 
-security = cfg.SECURITY  # This is fine for secure local networks. On the Internet, use "TLS" instead.
-password = cfg.PASSWORD  # This is the password defined in TmrlData/config/config.json
+security = cfg.SECURITY  # OK for secure local networks. On the Internet, prefer "TLS".
+password = cfg.PASSWORD  # Password defined in TmrlData/config/config.json
 
-server_ip = cfg.PUBLIC_IP_SERVER  # This is the localhost IP. Change it for your public IP if you want to run on the Internet.
-server_port = cfg.PORT  # On the Internet, the machine hosting the Server needs to be reachable via this port.
+server_ip = cfg.PUBLIC_IP_SERVER  # Use your public IP to run over the Internet.
+server_port = cfg.PORT  # Ensure this port is reachable when hosting over the Internet.
 
 if __name__ == "__main__":
     # Instantiating a TMRL Server is straightforward.
-    # More arguments are available for, e.g., using TLS. Please refer to the TMRL documentation.
+    # More arguments are available for TLS etc.; see the TMRL documentation.
     my_server = Server(security=security, password=password, port=server_port)

@@ -1,3 +1,9 @@
+"""Window capture interface using mss for Windows.
+
+Provides an implementation of TMRL's WindowInterface that grabs frames either
+in fullscreen or cropped to exclude borders/title bar.
+"""
+
 import mss
 import numpy as np
 from tmrl.custom.tm.utils.window import WindowInterface
@@ -14,13 +20,11 @@ if platform.system() == "Windows":
             self.fullscreen = fullscreen
 
         def screenshot(self):
-            """
-            Captura la pantalla usando mss
-            """
+            """Capture the window content using mss."""
             hwnd = win32gui.FindWindow(None, self.window_name)
             assert hwnd != 0, f"Could not find a window named {self.window_name}."
 
-            # Obtener las dimensiones de la ventana
+            # Window bounds
             x, y, x1, y1 = win32gui.GetWindowRect(hwnd)
 
             if self.fullscreen:
@@ -31,7 +35,7 @@ if platform.system() == "Windows":
                 "height": y1 - y
                 }
             else:
-                # Ajustar las dimensiones para excluir los bordes y la barra de título
+                # Adjust to exclude borders and title bar
                 monitor = {
                 "top": y + 32,
                 "left": x + self.w_diff // 2, 
@@ -39,7 +43,6 @@ if platform.system() == "Windows":
                 "height": y1 - y - 40
                 }
 
-            # Capturar la imagen con mss
             img = np.array(self.sct.grab(monitor))
             return img
 

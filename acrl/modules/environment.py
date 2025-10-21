@@ -1,11 +1,11 @@
 
 # local imports
-from rewards import RewardFunction
-from UDP_listener import udp_listener
+from modules.rewards import RewardFunction
+from modules.UDP_listener import udp_listener
 from inputs.xbox_controller_emulator import XboxControllerEmulator
 from inputs.GameInputs import reset_race, go_to_pits
-from window_interface import MSSWindowInterface
-from util import ImageVisualizer
+from modules.window_interface import MSSWindowInterface
+from modules.util import ImageVisualizer
 
 # standard library imports
 import logging
@@ -33,8 +33,7 @@ class AC_Interface(RealTimeGymInterface):
                  resize_to=(cfg.IMG_WIDTH, cfg.IMG_HEIGHT),
                  human_mode: bool = cfg.TMRL_CONFIG["HUMAN_WORKER"]
                  ):
-        """
-        Base rtgym interface for Assetto Corsa 
+        """Initialize the AC interface.
 
         Args:
             img_hist_len: int: history of images that are part of observations
@@ -71,7 +70,7 @@ class AC_Interface(RealTimeGymInterface):
         self.avg_progress = [0.0, 0.0] #TODO, modificar para que acepte un modo en el que no hay cambios de posición inicial
         self.progess_hist = deque(maxlen=50) #Guardar los ultimos 50 valores de progreso alcanzado
 
-        # Crear el visualizador
+    # Create image visualizer (optional; currently not used in loop)
         self.visualizer = ImageVisualizer()
 
     def initialize_common(self):    
@@ -165,7 +164,7 @@ class AC_Interface(RealTimeGymInterface):
                     self.controller.control_gamepad(control)          
         else:
             pass
-            # Por implementar para AC
+            # Not implemented for direct keyboard control in AC
             """ if control is not None:
                 actions = []
                 if control[0] > 0:
@@ -195,7 +194,7 @@ class AC_Interface(RealTimeGymInterface):
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             # shape is (height, width) for cv2 grayscale images
         else:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  #img[:, :, ::-1]  # reversed view for numpy RGB convention
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # reversed view for numpy RGB convention
             # shape is (height, width, channels) for cv2 images    
         #self.visualizer.update_image(img)  # Actualizar la imagen en el visualizador
         return img
@@ -209,9 +208,9 @@ class AC_Interface(RealTimeGymInterface):
             time.sleep(0.5)
             if self.multi_start_position:
                 if self.train_mode:
-                    # Calcula los promedios de progreso
-                    vals_false = [x[0] for x in self.progess_hist if x[1] is False] #Starting line
-                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] #Middle of the track
+                    # Compute progress averages by start position type
+                    vals_false = [x[0] for x in self.progess_hist if x[1] is False] # Starting line
+                    vals_true = [x[0] for x in self.progess_hist if x[1] is True] # Middle of the track
                     
                     mean_false = np.mean(vals_false) if vals_false else 0.0
                     mean_true = np.mean(vals_true) if vals_true else 0.0                    
@@ -219,22 +218,22 @@ class AC_Interface(RealTimeGymInterface):
                     self.avg_progress[0] = round(float(mean_false), 4)
                     self.avg_progress[1] = round(float(mean_true), 4)
 
-                    # Inversa de los promedios (agrega un pequeño epsilon para evitar división por cero)
+                    # Inverse weighting (with small epsilon to avoid division by zero)
                     epsilon = 1e-6
                     inv_false = 1 / (mean_false + epsilon)
                     inv_true = 1 / (mean_true + epsilon)                    
 
-                    # Normaliza para obtener probabilidades
+                    # Normalize to get probabilities
                     total = inv_true + inv_false
                     prob_false = inv_false / total
                     prob_true = inv_true / total                    
 
-                    # Decide el valor de tp_car usando la probabilidad inversa
+                    # Choose tp_car using the inverse-weighted probability
                     self.tp_car = random.choices([True, False], weights=[prob_true, prob_false])[0]
 
-                    print(f"Probabilidad Startig line: {prob_false:.2f}, Probabilidad Media Pista: {prob_true:.2f}")
+                    print(f"Start line prob: {prob_false:.2f}, Mid track prob: {prob_true:.2f}")
                 else:
-                    # En modo test, siempre va a starting line
+                    # In test mode, always go to starting line
                     self.tp_car = False
 
                 print(f"Pits: {self.tp_car}")
@@ -248,12 +247,13 @@ class AC_Interface(RealTimeGymInterface):
         # must be long enough for image to be refreshed
 
     def reset(self, seed=None, options=None):
-        """
-        obs must be a list of numpy arrays
+        """Return initial observation and info after reset.
+
+        obs is a list: [speed, gear, rpm, imgs]
         """
         
         if len(self.ep_rew) > 0:
-            # Calcula estadísticas del episodio anterior
+            # Episode stats from previous run
             total_reward = sum(self.ep_rew)
             min_reward = min(self.ep_rew)
             max_reward = max(self.ep_rew)
@@ -279,10 +279,7 @@ class AC_Interface(RealTimeGymInterface):
 
 
     def wait(self):
-        """
-        Non-blocking function
-        The agent stays 'paused', waiting in position
-        """
+        """Pause the agent without applying actions (non-blocking)."""
         if not self.human_mode:
             self.send_control(self.get_default_action())
         if self.save_replays:
@@ -295,9 +292,9 @@ class AC_Interface(RealTimeGymInterface):
         
 
     def get_obs_rew_terminated_info(self):
-        """
-        returns the observation, the reward, and a terminated signal for end of episode
-        obs must be a list of numpy arrays
+        """Return (obs, rew, terminated, info) for the current step.
+
+        obs is a list of numpy arrays; rew is a float32.
         """
 
         """while not self.grab_data()["transmitting"]:
@@ -320,7 +317,7 @@ class AC_Interface(RealTimeGymInterface):
         rew = np.float32(rew)
 
         if terminated:
-            #Add track progress to the history
+            # Add track progress to the history
             self.progess_hist.append((self.reward_function.track_position, self.tp_car))
 
         if self.reward_function.track_position > self.best[0] and not self.tp_car:
@@ -333,14 +330,12 @@ class AC_Interface(RealTimeGymInterface):
         return obs, rew, terminated, info
 
     def get_observation_space(self):
-        """
-        must be a Tuple
-        """
+        """Return observation space as a gymnasium Tuple."""
         speed = spaces.Box(low=0.0, high=1.0, shape=(1, ))
         gear = spaces.Box(low=0.0, high=1.0, shape=(1, ))
         rpm = spaces.Box(low=0.0, high=1.0, shape=(1, ))
 
-        # en caso de normalizar los colores, esto creo que solo es realizable en caso de tener un dataset:
+    # Color normalization example (requires dataset stats):
         """ spaces.Box(
             low=-2.1179,  # Aproximado de (0 - 0.485) / 0.229 para el canal rojo
             high=2.6400,  # Aproximado de (1 - 0.406) / 0.224 para el canal azul
@@ -359,16 +354,12 @@ class AC_Interface(RealTimeGymInterface):
         return spaces.Tuple((speed, gear, rpm, img))
 
     def get_action_space(self):
-        """
-        must return a Box
-        """
-        return spaces.Box(low=-1.0, high=1.0, shape=(2, )) # Cambiar a (3,) para gas brake y steering
+        """Return action space as a Box (gas-brake, steering)."""
+        return spaces.Box(low=-1.0, high=1.0, shape=(2, ))  # change to (3,) if modeling gas/brake separately
 
     def get_default_action(self):
-        """
-        initial action at episode start
-        """
-        return np.array([0.0, 0.0], dtype='float32') # Cambiar a [0.0, 0.0, 0.0] para gas brake y steering
+        """Default action at episode start."""
+        return np.array([0.0, 0.0], dtype='float32')
     
     def normalize_telemetry(self, data):
         max_speed = 400

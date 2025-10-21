@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Configura el nombre del archivo CSV de entrada y salida
-input_csv = '../HIGH_supervised_vabn_stack_1s_128p_C_4img_4act_20hz.csv'
+input_csv = 'HIGH_supervised_vabn_stack_1s_128p_C_4img_4act_20hz.csv'
 output_csv = 'HIGH_supervised_vabn_stack_1s_128p_C_4img_4act_20hz_cut.csv'
 
 # Episodios a eliminar (inclusive)

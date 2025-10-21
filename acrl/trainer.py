@@ -1,4 +1,3 @@
-
 # TMRL imports:
 from tmrl.networking import Trainer
 from tmrl.util import partial
@@ -6,11 +5,11 @@ from tmrl.envs import GenericGymEnv
 import tmrl.config.config_constants as cfg
 from tmrl.config.config_objects import CONFIG_DICT
 from tmrl.training_offline import TorchTrainingOffline
-from custom_algorithms import SAC_Agent, REDQSAC_Agent
+from acrl.modules.custom_algorithms import SAC_Agent, REDQSAC_Agent
 
-from environment import AC_Interface
-from memories import MemoryFull
-from custom_models import StackedChannelCNNActorCritic, CNNRNNActorCritic, StackedChannelCNNActorCriticREDQ
+from acrl.modules.environment import AC_Interface
+from acrl.modules.memories import MemoryFull
+from acrl.modules.custom_models import StackedChannelCNNActorCritic, CNNRNNActorCritic, StackedChannelCNNActorCriticREDQ
 
 # Set this to True only for debugging your pipeline.
 CRC_DEBUG = False
@@ -36,21 +35,19 @@ print("Action space: ", act_space)
 
 # === TMRL Trainer =====================================================================================================
 
-# The TMRL Trainer is where your training algorithm lives.
-# It connects to the Server, to retrieve training samples collected from the RolloutWorkers.
+# The TMRL Trainer is where the training algorithm lives.
+# It connects to the Server to retrieve training samples collected from the RolloutWorkers.
 # Periodically, it also sends updated policies to the Server, which forwards them to the RolloutWorkers.
 
-# TMRL Trainers contain a Training class. Currently, only TrainingOffline is supported.
-# TrainingOffline notably contains a Memory class, and a TrainingAgent class.
-# The Memory is a replay buffer. In TMRL, you are able and encouraged to define your own Memory.
-# This is how you can implement highly optimized ad-hoc pipelines for your applications.
-# Nevertheless, TMRL also defines a generic, non-optimized Memory that can be used for any pipeline.
-# The TrainingAgent contains your training algorithm per-se.
-# TrainingOffline is meant for asynchronous off-policy algorithms, such as Soft Actor-Critic.
+# TMRL Trainers contain a Training class. Currently, we use TrainingOffline.
+# TrainingOffline encapsulates a Memory class and a TrainingAgent class.
+# The Memory is a replay buffer (customizable in this project).
+# The TrainingAgent contains the learning algorithm (SAC or REDQ SAC here).
+# TrainingOffline is intended for asynchronous off-policy algorithms such as Soft Actor-Critic.
 
 # Dummy environment OR (observation space, action space) tuple:
 # env_cls = partial(GenericGymEnv, id="real-time-gym-ts-v1", gym_kwargs={"config": my_rtgym_config})
-#env_cls = (obs_space, act_space)
+# env_cls = (obs_space, act_space)
 
 # Memory:
 
@@ -71,7 +68,7 @@ model_cls =  CNNRNNActorCritic if cfg.TMRL_CONFIG["USE_RNN"] else StackedChannel
 
 ALG_CONFIG = cfg.TMRL_CONFIG["ALG"]
 
-#ALG_CONFIG["ALGORITHM"] = "REDQSAC" #TODO CAMBIAR EL CFG OBJECT YA QUE DA ERROR FUERA DE SAC
+# ALG_CONFIG["ALGORITHM"] = "REDQSAC"  # TODO: change cfg object if using REDQ outside SAC defaults
 
 if ALG_CONFIG["ALGORITHM"] == "SAC":
     training_agent_cls = partial(
@@ -114,9 +111,9 @@ elif ALG_CONFIG["ALGORITHM"] == "REDQSAC":
         q_updates_per_policy_update=ALG_CONFIG["REDQ_Q_UPDATES_PER_POLICY_UPDATE"]
     )
 
-print(f"Using {ALG_CONFIG["ALGORITHM"]} algorithm")
+print(f"Using {ALG_CONFIG['ALGORITHM']} algorithm")
 
-# Implementar aqui otros algoritmos de entrenamiento si es necesario
+# Add other training algorithms here if needed.
 
 # Training class:
 

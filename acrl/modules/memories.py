@@ -1,3 +1,15 @@
+"""
+Custom memories adapted from TMRL (MIT License).
+
+Base source (modified): https://github.com/trackmania-rl/tmrl/tree/master/tmrl/custom
+
+This module customizes sample compression and replay buffers for local storage,
+training, and inference.
+
+Copyright (c) TMRL authors
+Modifications (c) project authors. Licensed under the MIT License.
+"""
+
 import numpy as np
 import random
 import tmrl.config.config_constants as cfg
@@ -18,16 +30,14 @@ def last_true_in_list(li):
 # LOCAL BUFFER COMPRESSION ===============================================================
 
 def get_local_buffer_sample_imgs(prev_act, obs, rew, terminated, truncated, info):
-    """
-    Sample compressor for MemoryTMFull
-    Input:
-        prev_act: action computed from a previous observation and applied to yield obs in the transition
+    """Sample compressor for image-based observations.
+
+    Args:
+        prev_act: action applied to obtain obs in the transition (comes BEFORE obs)
         obs, rew, terminated, truncated, info: outcome of the transition
-    this function creates the object that will actually be stored in local buffers for networking
-    this is to compress the sample before sending it over the Internet/local network
-    buffers of such samples will be given as input to the append() method of the memory
-    the user must define both this function and the append() method of the memory
-    CAUTION: prev_act is the action that comes BEFORE obs (i.e. prev_obs, prev_act(prev_obs), obs(prev_act))
+
+    Returns a compressed sample tuple stored in local buffers for networking.
+    The compressor reduces image history to the last image only to minimize bandwidth.
     """
 
     prev_act_mod = prev_act
@@ -42,6 +52,7 @@ def get_local_buffer_sample_imgs(prev_act, obs, rew, terminated, truncated, info
 # SUPPORTED CUSTOM MEMORIES ============================================================================================
 
 class GenericTorchMemory(TorchMemory):
+    """Generic Torch replay memory storing raw lists per field."""
     def __init__(self,
                  memory_size=1e6,
                  batch_size=1,
@@ -59,6 +70,7 @@ class GenericTorchMemory(TorchMemory):
                          device=device)
 
     def append_buffer(self, buffer):
+        """Append a local buffer of compressed samples to the global memory."""
 
         # parse:
         d0 = [b[0] for b in buffer.memory]  # actions
@@ -99,6 +111,7 @@ class GenericTorchMemory(TorchMemory):
             self.data[6] = self.data[6][to_trim:]
 
     def __len__(self):
+        """Number of valid transitions available."""
         if len(self.data) == 0:
             return 0
         res = len(self.data[0]) - 1
@@ -108,6 +121,10 @@ class GenericTorchMemory(TorchMemory):
             return res
 
     def get_transition(self, item):
+        """Get a valid (last_obs, new_act, rew, new_obs, terminated, truncated, info) transition.
+
+        Skips invalid transitions that cross end-of-episode boundaries.
+        """
 
         # This is a hack to avoid invalid transitions from terminal to initial
         # TODO: find a way to only index valid transitions instead
@@ -129,6 +146,7 @@ class GenericTorchMemory(TorchMemory):
 
 
 class MemoryEnv(TorchMemory):
+    """Base environment memory handling images with history and action buffers."""
     def __init__(self,
                  memory_size=None,
                  batch_size=None,
@@ -159,6 +177,7 @@ class MemoryEnv(TorchMemory):
         raise NotImplementedError
 
     def __len__(self):
+        """Number of valid transitions accounting for history/stride offsets."""
         if len(self.data) == 0:
             return 0
         res = len(self.data[0]) - self.min_samples - 1
@@ -172,13 +191,14 @@ class MemoryEnv(TorchMemory):
     
 class MemoryFull(MemoryEnv):
     def get_transition(self, item):
-        """
-        CAUTION: item is the first index of the 4 images in the images history of the OLD observation
-        CAUTION: in the buffer, a sample is (act, obs(act)) and NOT (obs, act(obs))
-            i.e. in a sample, the observation is what step returned after being fed act (and preprocessed)
-            therefore, in the RTRL setting, act is appended to obs
-        So we load 5 images from here...
-        Don't forget the info dict for CRC debugging
+        """Return one transition with image history and action buffers.
+
+        Notes:
+        - item is the first index of the images in the history of the OLD observation
+        - in the buffer, a sample is (act, obs(act)) and NOT (obs, act(obs))
+          i.e. the observation is what step returned after being fed act (and preprocessed)
+          therefore, in the RTRL setting, act is appended to obs
+        - keeps info dict for CRC debugging
         """
         if self.data[4][item + self.min_samples - 1]:
             if item == 0:  # if first item of the buffer
@@ -190,36 +210,36 @@ class MemoryFull(MemoryEnv):
             else:
                 item -= 1
 
-        # Conversion de item (primer indice si stride = 1) a indices de los ultimos elementos
+        # Convert item to indices of the last elements of old/new observations
         idx_last = item + self.min_samples - 1
         idx_now = item + self.min_samples
 
-        # Cargar imágenes y acciones para last_obs y new_obs por separado
+        # Load images and actions for last_obs and new_obs separately
         imgs_last_obs = self.load_imgs(idx_last)
         imgs_new_obs = self.load_imgs(idx_now)
         acts_last_obs = self.load_acts(idx_last)
         acts_new_obs = self.load_acts(idx_now)
 
-        # Calcula los índices usados para imgs_last_obs y imgs_new_obs
+        # Compute indices window used for images
         all_indices = list(range(idx_now - self.imgs_obs * self.img_stride, idx_now + 1))
 
-        # Busca todos los EOE en la ventana
+        # Search EOE (end-of-episode) within the window
         eoe_positions = [i for i, idx in enumerate(all_indices) if self.data[4][idx]]
         if eoe_positions:
-            eoe_idx = eoe_positions[0]  # Primer EOE encontrado
+            eoe_idx = eoe_positions[0]
             dist_to_start = eoe_idx
             dist_to_end = len(all_indices) - 1 - eoe_idx
             if dist_to_start < dist_to_end:
-                # Mueve item hacia adelante para dejar el EOE fuera por la izquierda
+                # Move item forward to exclude EOE on the left
                 item = item + (eoe_idx + 1)
             else:
-                # Mueve item hacia atrás para dejar el EOE fuera por la derecha
+                # Move item backward to exclude EOE on the right
                 item = item - (len(all_indices) - eoe_idx)
-            # Si el nuevo item es válido, vuelve a intentar
+            # Retry if new item is valid
             if 0 <= item < self.__len__():
                 return self.get_transition(item)
             else:
-                # Si no es válido, elige uno random como fallback
+                # Fallback: choose a random valid item
                 new_item = random.randint(0, self.__len__() - 1)
                 return self.get_transition(new_item)
 
@@ -234,12 +254,13 @@ class MemoryFull(MemoryEnv):
         return last_obs, new_act, rew, new_obs, terminated, truncated, info
 
     def load_imgs(self, idx_final):
-        #res = self.data[3][(item + self.start_imgs_offset):(item + self.start_imgs_offset + self.imgs_obs + 1)]
+        # Compute indices to retrieve past images with stride
         indices = [idx_final - i * self.img_stride for i in reversed(range(self.imgs_obs))]
         res = [self.data[3][idx] for idx in indices]
         return np.stack(res)
 
     def load_acts(self, idx_final):
+        """Load past actions, averaging within stride windows if stride > 1."""
         acts = []
         for i in reversed(range(self.act_buf_len)):
             idx = idx_final - i * self.img_stride
@@ -253,9 +274,10 @@ class MemoryFull(MemoryEnv):
         return acts
 
     def append_buffer(self, buffer):
-        """
-        buffer is a list of samples ( act, obs, rew, terminated, truncated, info)
-        don't forget to keep the info dictionary in the sample for CRC debugging
+        """Append a list of samples to the memory.
+
+        buffer items are tuples: (act, obs, rew, terminated, truncated, info)
+        Keeps the info dictionary for CRC debugging.
         """
 
         first_data_idx = self.data[0][-1] + 1 if self.__len__() > 0 else 0
@@ -318,6 +340,7 @@ class MemoryFull(MemoryEnv):
 from collections import deque
 
 class MemoryInference:
+    """Lightweight buffer to build strided inference observations on the fly."""
     def __init__(self, capacity, hist_len=4, act_len =2, stride=1):
         self.buffer = deque(maxlen=capacity)
         self.hist_len = hist_len
@@ -325,7 +348,7 @@ class MemoryInference:
         self.stride = stride
 
     def append(self, obs):
-        """ Format obs as a tuple (speed, gear, rpm, images, *actions) """
+        """Format obs as a tuple (speed, gear, rpm, last_image, last_action)."""
 
         last_obs = (obs[0],  # speed
                     obs[1],  # gear
@@ -339,7 +362,7 @@ class MemoryInference:
         return len(self.buffer)
     
     def get_transition(self):
-        """Obtiene la transición actual para la inferencia."""
+        """Build the current transition for inference with strided history."""
         last_idx = len(self.buffer) - 1
 
         imgs_indices = [last_idx - i * self.stride for i in reversed(range(self.hist_len))]
@@ -370,5 +393,5 @@ class MemoryInference:
         return last_obs
 
     def clear(self):
-        """Vacía la memoria de inferencia."""
+        """Clear the inference memory."""
         self.buffer.clear()
