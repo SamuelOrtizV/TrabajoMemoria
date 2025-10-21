@@ -206,6 +206,10 @@ Practically, logs are printed at the end of each round and synced to wandb at th
 - Some agent ideas come from Spinning Up (OpenAI).
 - This repo includes modifications specific to Assetto Corsa.
 
+## 📝 License
+
+This project is licensed under the MIT License. See the `LICENSE` file for the full text.
+
 
 ## 🚧 Future work
 
