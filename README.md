@@ -1,4 +1,4 @@
-# Assetto Corsa RL (TMRL + SAC)
+# Assetto Corsa RL - End to end autonomous driving framework
 
 Reinforcement Learning agent that drives in Assetto Corsa using on-screen vision and basic telemetry.
 The agent consumes a history of frames (stacked images) plus simple signals (speed, gear, RPM) and outputs controls to a virtual Xbox 360 gamepad (vgamepad). The pipeline follows TMRL’s architecture (Trainer/Server/RolloutWorker) and currently uses Soft Actor-Critic (SAC). RNN variants are supported.
@@ -204,7 +204,10 @@ Practically, logs are printed at the end of each round and synced to wandb at th
 
 - Built on TMRL (TrackMania RL) – MIT License.
 - Some agent ideas come from Spinning Up (OpenAI).
-- This repo includes modifications specific to Assetto Corsa.
+
+## Disclaimer
+
+Not affiliated with Kunos Simulazioni or Assetto Corsa. For educational and research purposes only.
 
 ## 📝 License
 
